@@ -50,16 +50,19 @@ public abstract class MixinBookmarkList {
 		BookmarkOverlay bookmarkOverlay,
 		CallbackInfoReturnable<Boolean> cir
 	) {
+		// not a bookmark screen
 		if (bookmarkOverlay.isMouseOver(input.getMouseX(), input.getMouseY())) {
 			return;
 		}
+		// need a recipe screen
 		if (!(element instanceof RecipeContextElement<?> recipeContextElement)) {
 			return;
 		}
+		// ensure a output slot
 		if (recipeContextElement.getRole() != RecipeIngredientRole.OUTPUT) {
 			return;
 		}
-
+		// catch it, add a recipe bookmark. do not use jei internal api because i want to bookmark the item user focused
 		RecipeBookmark<?, ?> recipeBookmark = createOutputRecipeBookmark(recipeContextElement, ingredientManager);
 		if (recipeBookmark != null) {
 			cir.setReturnValue(add(recipeBookmark));
