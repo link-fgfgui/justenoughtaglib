@@ -20,38 +20,49 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * 在配方布局构建期捕获槽的 tag 来源，并把完整成员与书签收窄后的成员
- * 映射到同一份 tag 元数据，供 tooltip、点击导航和交互语义查询。
+ * Captures tag origins of slots during recipe-layout construction and maps
+ * both full members and bookmark-narrowed members to the same tag metadata
+ * for tooltip, click-navigation, and interaction queries.
  *
- * <p>tag 身份在 {@link Ingredient#getItems()} 展开的那一刻丢失（展开后只剩物品列表）。
- * JEI 所有展开路径最终都调用同一个 {@code getItems()}（crafting 扩展、
- * {@code IIngredientConsumer}/{@code IIngredientAcceptor} 默认方法、锻造扩展等），
- * 因此 loader 模块（fabric/forge）的 {@code MixinIngredient} 在 getItems 返回后、
- * 布局构建窗口内（见 {@link #beginBuild()} / {@link #associateLayout(RecipeLayout)}）
- * 捕获展开结果与 tag 的对应关系。构建窗口外的 getItems（配方注册、铁砧材料、
- * 酿造容器枚举等）被 {@link #isBuilding()} 守卫排除。
+ * <p>Tag identity is lost when {@link Ingredient#getItems()} expands an
+ * ingredient (only the item list remains after expansion). All JEI expansion
+ * paths ultimately call the same {@code getItems()} method (crafting extensions,
+ * {@code IIngredientConsumer}/{@code IIngredientAcceptor} default methods,
+ * forging extensions, and so on). Therefore, the loader modules' (fabric/forge)
+ * {@code MixinIngredient} captures the mapping between the expanded result and
+ * the tag after getItems returns and during the layout-build window (see
+ * {@link #beginBuild()} / {@link #associateLayout(RecipeLayout)}). Calls to
+ * getItems outside the build window (recipe registration, anvil ingredients,
+ * brewing-container enumeration, and so on) are excluded by the
+ * {@link #isBuilding()} guard.
  *
- * <p>1.20.1 的 {@link Ingredient} 没有公开的 tag 访问器（{@code getTag()} 是后续版本
- * 才加入的），用 {@link Ingredient#toJson()} 恢复：单一 TagValue 的 Ingredient 序列化
- * 为 {@code {"tag": "ns:path"}}（与数据包格式一致），与 getTag() 的判定语义等价——
- * 混合值/显式物品列表都没有 tag 键，被天然排除。
+ * <p>In 1.20.1, {@link Ingredient} has no public tag accessor ({@code getTag()}
+ * was added in a later version), so the tag is restored from
+ * {@link Ingredient#toJson()}: an Ingredient containing a single TagValue is
+ * serialized as {@code {"tag": "ns:path"}} (matching the data-pack format),
+ * which is equivalent to the getTag() check. Mixed values and explicit item
+ * lists do not have a tag key and are naturally excluded.
  *
- * <p>捕获结果按"构建中的 RecipeLayoutBuilder"归组（ThreadLocal），在
- * {@code RecipeLayoutBuilder.buildRecipeLayout} 返回时与最终的 RecipeLayout 实例关联
- * （WeakHashMap）。点击时只查询鼠标所在布局自己的映射，因此不存在跨页面/跨布局的
- * 陈旧条目——这是比"全局反向扫描"精确的根本原因。
+ * <p>Capture results are grouped by the "RecipeLayoutBuilder currently being
+ * built" (ThreadLocal) and associated with the final RecipeLayout instance
+ * when {@code RecipeLayoutBuilder.buildRecipeLayout} returns (WeakHashMap).
+ * Clicks query only the mapping for the layout under the mouse, so stale entries
+ * cannot leak across pages or layouts. This is the fundamental reason it is
+ * more precise than "global reverse scanning".
  *
- * <p>键是槽内实际物品的 {@link Item} 列表（顺序敏感的全等匹配）。未绑定时记录
- * 完整 tag 成员；有 bookmark 绑定时还记录单物品键，但值中继续保存完整成员列表。
+ * <p>The key is the list of actual {@link Item} instances in a slot (an
+ * order-sensitive exact match). Without a bookmark binding, the full tag
+ * membership is recorded; with a bookmark binding, a single-item key is also
+ * recorded while the value continues to retain the full member list.
  */
 public final class TagSlotTracker {
 	private TagSlotTracker() {
 	}
 
-	/** 当前正在构建的布局的捕获表；仅客户端线程访问，ThreadLocal 兜底其它线程。 */
+	/** Capture table for the layout currently being built; accessed only from the client thread, with ThreadLocal as a fallback for other threads. */
 	private static final ThreadLocal<Map<List<Item>, TagSlotData>> CURRENT_BUILD = new ThreadLocal<>();
 
-	/** 布局实例 → 该布局构建期捕获的表。布局被回收后条目自动消失。 */
+	/** Layout instance -> the capture table from that layout's build phase. Entries disappear automatically when the layout is collected. */
 	private static final Map<RecipeLayout, Map<List<Item>, TagSlotData>> LAYOUT_TAGS =
 		Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -62,23 +73,25 @@ public final class TagSlotTracker {
 	}
 
 	/**
-	 * 由 {@code RecipeLayoutBuilder.<init>} 调用：开始一次新的布局构建捕获。
+	 * Called by {@code RecipeLayoutBuilder.<init>}: starts capturing a new layout build.
 	 */
 	public static void beginBuild() {
 		CURRENT_BUILD.set(new HashMap<>());
 	}
 
-	/** 是否处于布局构建窗口内（getItems 漏斗的守卫：仅构建期捕获）。 */
+	/** Whether the layout-build window is active (guard for the getItems funnel: capture only during construction). */
 	public static boolean isBuilding() {
 		return CURRENT_BUILD.get() != null;
 	}
 
 	/**
-	 * 在 tag 被展开后立刻调用：若 Ingredient 是单一 tag 值，记录"成员列表 → tag"。
-	 * 非 tag Ingredient（显式物品列表、混合值）直接忽略，保证映射里只有真实的 tag。
+	 * Called immediately after a tag is expanded: if the Ingredient is a single
+	 * tag value, records the "member list -> tag" mapping.
+	 * Non-tag Ingredients (explicit item lists and mixed values) are ignored so
+	 * the mapping contains only actual tags.
 	 *
-	 * @param ingredient    被展开的 Ingredient；tag 身份从这里恢复（toJson）
-	 * @param expandedStacks 展开结果（getItems 的返回值，与槽内展示内容同一份数组）
+	 * @param ingredient     Expanded Ingredient; tag identity is restored from this value (toJson)
+	 * @param expandedStacks Expansion result (the getItems return value and the same array displayed in the slot)
 	 */
 	public static void capture(Ingredient ingredient, ItemStack[] expandedStacks) {
 		if (ingredient == null) {
@@ -155,15 +168,16 @@ public final class TagSlotTracker {
 	}
 
 	/**
-	 * 1.20.1 无 {@code Ingredient.getTag()}，从序列化结果恢复：
-	 * 单一 TagValue 的 Ingredient 序列化为 {@code {"tag": "ns:path"}}。
+	 * 1.20.1 has no {@code Ingredient.getTag()}; restores the tag from the
+	 * serialized form. An Ingredient containing a single TagValue is serialized
+	 * as {@code {"tag": "ns:path"}}.
 	 */
 	private static Optional<TagKey<Item>> getTag(Ingredient ingredient) {
 		JsonElement json;
 		try {
 			json = ingredient.toJson();
 		} catch (RuntimeException e) {
-			// 模组自定义 Ingredient 的序列化可能抛异常，跳过即可。
+			// Serialization of a mod-defined Ingredient may throw; skip it.
 			return Optional.empty();
 		}
 		if (!json.isJsonObject()) {
@@ -181,7 +195,7 @@ public final class TagSlotTracker {
 		return Optional.of(TagKey.create(Registries.ITEM, location));
 	}
 
-	/** 由 {@code RecipeLayoutBuilder.buildRecipeLayout} 返回时调用：把本次构建的捕获挂到布局上。 */
+	/** Called when {@code RecipeLayoutBuilder.buildRecipeLayout} returns: attaches this build's captures to the layout. */
 	public static void associateLayout(RecipeLayout layout) {
 		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
 		CURRENT_BUILD.remove();
@@ -192,9 +206,11 @@ public final class TagSlotTracker {
 	}
 
 	/**
-	 * 查询某个布局内由 tag Ingredient 构建的槽，包括 bookmark 收窄后的单物品槽。
+	 * Looks up a slot built from a tag Ingredient in a layout, including a
+	 * single-item slot narrowed by a bookmark.
 	 *
-	 * @return 槽内容对应的 tag；该槽不是由 tag Ingredient 构建时为空。
+	 * @return the tag corresponding to the slot contents; empty when the slot was
+	 * not built from a tag Ingredient.
 	 */
 	public static Optional<TagKey<?>> findTag(IRecipeLayoutDrawable<?> layout, List<ItemStack> itemStacks) {
 		return findTagData(layout, itemStacks).map(TagSlotData::tag);

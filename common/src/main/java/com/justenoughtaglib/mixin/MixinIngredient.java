@@ -9,13 +9,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 唯一漏斗：JEI 所有把原始 Ingredient 展开成物品列表的路径最终都调用
- * {@code Ingredient.getItems()}（crafting 扩展、IIngredientConsumer /
- * IIngredientAcceptor 默认方法、锻造扩展等）。在布局构建窗口内
- * （{@link TagSlotTracker#beginBuild()} 与 {@code associateLayout} 之间）的
- * RETURN 处捕获"展开结果 → tag"，并按已加载的 tag recipe 书签收窄展示成员；
- * 窗口外的 getItems（配方注册、铁砧材料、酿造容器枚举等）由
- * {@link TagSlotTracker#isBuilding()} 守卫排除。
+ * Single funnel: every JEI path that expands a raw Ingredient into an item
+ * list ultimately calls {@code Ingredient.getItems()} (crafting extensions,
+ * {@code IIngredientConsumer} / {@code IIngredientAcceptor} default methods,
+ * forging extensions, and so on). During the layout-build window (between
+ * {@link TagSlotTracker#beginBuild()} and {@code associateLayout}), capture
+ * the "expanded result -> tag" mapping at RETURN and narrow the displayed
+ * members according to loaded tag recipe bookmarks. Calls to getItems outside
+ * the window (recipe registration, anvil ingredients, brewing-container
+ * enumeration, and so on) are excluded by the {@link TagSlotTracker#isBuilding()}
+ * guard.
  */
 @Mixin(Ingredient.class)
 public abstract class MixinIngredient {

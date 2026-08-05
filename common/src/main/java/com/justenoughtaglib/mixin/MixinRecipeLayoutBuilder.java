@@ -10,9 +10,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 把构建期捕获的 tag 映射与最终 RecipeLayout 实例关联：
- * 每个布局一个独立映射（ThreadLocal 归组），buildRecipeLayout 返回时挂到布局上，
- * 点击查询只读当前布局的数据——跨页面/跨配方的陈旧条目不可能误命中。
+ * Associates tag mappings captured during construction with the final
+ * RecipeLayout instance. Each layout gets an independent mapping (grouped with
+ * ThreadLocal), which is attached when buildRecipeLayout returns. Click queries
+ * read only the current layout's data, so stale entries from other pages or
+ * recipes cannot match accidentally.
  */
 @Mixin(RecipeLayoutBuilder.class)
 public abstract class MixinRecipeLayoutBuilder<T> {

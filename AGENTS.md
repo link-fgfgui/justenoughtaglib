@@ -33,5 +33,5 @@
 已知事实（供核对）：
 - 书签文件为每世界路径：`config/jei/world/local/<世界名>/bookmarks.ini`（多人为 `world/server/<名>_<hash>/`）
 - 世界名会做路径净化：空格 → 下划线（如 `New World` → `New_World`）
-- JEI fabric 依赖：`fabric-api >= 0.92.2+1.20.1`、`fabricloader >= 0.16.10`（已在 gradle.properties 升级）
-- fabric 版本谓词不支持 `[min,)` 区间语法，fabric.mod.json 中必须用 `>=` 写法（`jei_version_range_fabric`）
+- JEI 15.21.0.148 自身 fabric.mod.json 要求 `fabric-api >= 0.92.2+1.20.1`、`fabricloader >= 0.16.3`；本仓库 gradle.properties 构建用 `jei_version=15.21.0.148`、`fabric_api_version=0.92.11`、`fabric_loader_version=0.16.10`
+- fabric.mod.json 依赖在内联用 `>=` 写法，无独立 range 属性（如 `"fabricloader": ">=0.14"`、`"jei": ">=${jei_version}"`，相应 file 位于 `fabric/src/main/resources/fabric.mod.json`）；forge 的 `mods.toml` 才用 `[${jei_version},)` 区间

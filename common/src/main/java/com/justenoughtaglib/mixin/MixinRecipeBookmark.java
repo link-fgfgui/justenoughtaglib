@@ -14,18 +14,22 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 修正 tag recipe 书签写入的物品。
+ * Fixes the item stored by tag recipe bookmarks.
  *
- * 原逻辑 RecipeBookmark.create 取布局中第一个 OUTPUT 槽的物品
- * （tag recipe 的成员顺序是数据包声明序），因此书签文件里
- * {@code "R:...tag_recipes/...#...#item_stack&<物品>"} 写的是 tag 首成员，
- * 而不是用户按 U 时聚焦的那个物品。
+ * The original RecipeBookmark.create takes the item from the first OUTPUT
+ * slot in the layout (tag recipe members are ordered according to their data
+ * pack declaration), so the bookmark file stores the first tag member in
+ * {@code "R:...tag_recipes/...#...#item_stack&<item>"} instead of the item
+ * focused when the user pressed U.
  *
- * 这里在 create 入口拦截：当 recipe type 属于 tag_recipes/ 且布局带 focus 时，
- * 用 focus 的物品重建书签（displayRole 固定 OUTPUT，反序列化时按 OUTPUT
- * focus 即可匹配 tag 布局的 output 槽）；其余情况一律走原逻辑。
+ * This intercepts create at its entry point. When the recipe type belongs to
+ * tag_recipes/ and the layout has a focus, it reconstructs the bookmark with
+ * the focused item (displayRole is fixed to OUTPUT, and an OUTPUT focus matches
+ * the tag layout's output slot during deserialization). All other cases use
+ * the original logic.
  *
- * remap = false：JEI 的类/方法在 Forge 与 Fabric 运行时均不重映射。
+ * remap = false: JEI classes and methods are not remapped at runtime on Forge
+ * or Fabric.
  */
 @Mixin(RecipeBookmark.class)
 public class MixinRecipeBookmark {
@@ -38,20 +42,20 @@ public class MixinRecipeBookmark {
 	) {
 		ResourceLocation recipeTypeUid = recipeLayoutDrawable.getRecipeCategory().getRecipeType().getUid();
 		if (!recipeTypeUid.getPath().startsWith("tag_recipes/")) {
-			return; // 非 tag recipe 走原逻辑
+			return; // Not a tag recipe; use the original logic.
 		}
 		if (!(recipeLayoutDrawable instanceof MixinRecipeLayoutAccessor accessor)) {
 			return;
 		}
 		IFocusGroup focuses = accessor.justenoughtaglib$getFocuses();
 		if (focuses == null) {
-			return; // 无 focus（直接浏览 tag 页）：原逻辑写 tag 首成员
+			return; // No focus (directly browsing the tag page); the original logic stores the first tag member.
 		}
 		for (IFocus<?> focus : focuses.getAllFocuses()) {
 			ResourceLocation recipeUid = recipeLayoutDrawable.getRecipeCategory()
 				.getRegistryName(recipeLayoutDrawable.getRecipe());
 			if (recipeUid == null) {
-				return; // 与原逻辑一致：无 registryName 则放弃书签
+				return; // Match the original logic: abandon the bookmark without a registry name.
 			}
 			ITypedIngredient<?> typed = ingredientManager.normalizeTypedIngredient(focus.getTypedValue());
 			cir.setReturnValue(new RecipeBookmark<>(

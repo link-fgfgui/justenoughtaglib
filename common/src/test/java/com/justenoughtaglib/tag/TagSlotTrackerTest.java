@@ -39,19 +39,22 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * TagSlotTracker 捕获/查询契约的无头单元测试：
- * 不启动游戏，用原版物品与手工绑定的 tag 内容验证映射语义。
+ * Headless unit tests for the TagSlotTracker capture/lookup contract:
+ * validates mapping semantics with vanilla items and manually bound tag
+ * contents without starting the game.
  */
 class TagSlotTrackerTest {
 	private static Item OAK;
 	private static Item SPRUCE;
 
 	static {
-		// 1.20.1 的 MappedRegistry 构造要求 Bootstrap 已启动（checkBootstrapCalled），
-		// bootStrap() 纯代码初始化注册表，无需资源包；DataFixers 初始化要求
-		// SharedConstants 已设置版本（getDataVersion）。
-		// Item 构造会 createIntrusiveHolder，bootStrap 后注册表已定型无法再创建
-		// 自定义物品，直接用 bootStrap 已注册的原版物品。
+		// Constructing MappedRegistry in 1.20.1 requires Bootstrap to be initialized
+		// (checkBootstrapCalled). bootStrap() initializes registries entirely in code
+		// and does not need resource packs; DataFixers initialization requires
+		// SharedConstants to have a version set (getDataVersion).
+		// Constructing an Item creates an intrusive holder; after bootStrap the
+		// registry is frozen, so custom items cannot be created. Use vanilla items
+		// already registered by bootStrap().
 		SharedConstants.setVersion(new WorldVersion() {
 			@Override
 			public DataVersion getDataVersion() {
@@ -102,7 +105,7 @@ class TagSlotTrackerTest {
 		return BuiltInRegistries.ITEM.getHolderOrThrow(key);
 	}
 
-	/** 模拟 MixinIngredient 的 getItems RETURN 捕获：传展开结果。 */
+	/** Simulates MixinIngredient's getItems RETURN capture by passing the expanded result. */
 	private static void capture(Ingredient ingredient) {
 		TagSlotTracker.capture(ingredient, ingredient.getItems());
 	}
@@ -156,7 +159,7 @@ class TagSlotTrackerTest {
 		};
 	}
 
-	/** tag Ingredient 在展开后（无头环境下展开为空）仍能按空内容列表查回。 */
+	/** A tag Ingredient can still be looked up by its empty expanded contents in a headless environment. */
 	@Test
 	void tagIngredientIsCapturedAndFound() {
 		TagKey<Item> tag = tag("planks");
@@ -169,7 +172,7 @@ class TagSlotTrackerTest {
 		assertEquals(Optional.of(tag), TagSlotTracker.findTag(layout, List.of()));
 	}
 
-	/** 显式物品列表的 Ingredient（非 tag）不被捕获。 */
+	/** A non-tag Ingredient with explicit item contents is not captured. */
 	@Test
 	void plainItemIngredientIsNotCaptured() {
 		RecipeLayout layout = layout();
@@ -181,7 +184,7 @@ class TagSlotTrackerTest {
 		assertEquals(Optional.empty(), TagSlotTracker.findTag(layout, List.of(new ItemStack(OAK))));
 	}
 
-	/** 展开按注册表实际绑定的 tag 内容，且键为顺序敏感的全等匹配。 */
+	/** Expansion uses the tag contents bound in the registry, and the key requires order-sensitive exact matching. */
 	@Test
 	void expansionUsesBoundTagContentsAndIsOrderSensitive() {
 		TagKey<Item> tag = tag("planks");
@@ -206,7 +209,7 @@ class TagSlotTrackerTest {
 		assertEquals(Optional.empty(), TagSlotTracker.findTag(layout, List.of(new ItemStack(OAK))));
 	}
 
-	/** 同一内容先捕获者胜（与 JEI 反查 findFirst 语义一致）。 */
+	/** The first capture wins for identical contents, matching JEI's findFirst reverse-lookup semantics. */
 	@Test
 	void firstCaptureWinsForIdenticalContent() {
 		TagKey<Item> tagA = tag("a");
@@ -225,7 +228,7 @@ class TagSlotTrackerTest {
 		assertEquals(Optional.of(tagA), TagSlotTracker.findTag(layout, List.of(new ItemStack(OAK))));
 	}
 
-	/** 不同布局的捕获互不串扰；同内容在不同布局可指向不同 tag。 */
+	/** Captures from different layouts do not interfere; identical contents can point to different tags in different layouts. */
 	@Test
 	void layoutsAreIsolated() {
 		TagKey<Item> tagA = tag("a");

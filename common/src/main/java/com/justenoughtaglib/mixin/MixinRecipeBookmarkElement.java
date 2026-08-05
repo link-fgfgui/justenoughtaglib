@@ -82,7 +82,8 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		}
 
 		if (roles.contains(RecipeIngredientRole.INPUT)) {
-			// U / 右键查用途：等价于在显示物品上按 U，列出所有用该物品作为输入的配方
+			// U / right-click for uses: equivalent to pressing U on the displayed item,
+			// listing all recipes that use it as an input.
 			recipesGui.show(focusUtil.createFocuses(recipeBookmark.getRecipeOutput(), roles));
 			ci.cancel();
 			return;
