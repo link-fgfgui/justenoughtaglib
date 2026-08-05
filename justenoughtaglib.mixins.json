@@ -2,7 +2,7 @@
     "required": true,
     "minVersion": "0.8",
     "package": "com.justenoughtaglib.mixin",
-    "refmap": "${mod_id}.refmap.json",
+    "refmap": "justenoughtaglib.refmap.json",
     "compatibilityLevel": "JAVA_17",
     "mixins": [
     ],
@@ -14,8 +14,7 @@
         "MixinRecipeGuiLayouts",
         "MixinBookmarkList",
         "MixinRecipeBookmarkElement",
-        "MixinRecipeLayoutBuilder",
-        "MixinTagInfoRecipeCategory"
+        "MixinRecipeLayoutBuilder"
     ],
     "server": [
     ],
