@@ -15,17 +15,12 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferManager;
 import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.common.Internal;
 import mezz.jei.common.gui.JeiTooltip;
-import mezz.jei.common.input.IInternalKeyMappings;
 import mezz.jei.common.transfer.RecipeTransferUtil;
 import mezz.jei.gui.bookmarks.RecipeBookmark;
-import mezz.jei.gui.input.UserInput;
 import mezz.jei.gui.overlay.elements.RecipeBookmarkElement;
 import mezz.jei.api.runtime.IRecipesGui;
 import mezz.jei.gui.util.FocusUtil;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Player;
@@ -45,18 +40,13 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * Gives JEI recipe bookmarks a recipe marker and preserves JEI's tooltip feature flow.
+ * Gives JEI recipe bookmarks a recipe marker and preserves JEI's native interactions.
  */
 @Mixin(RecipeBookmarkElement.class)
 public abstract class MixinRecipeBookmarkElement<R, I> {
 	@Shadow(remap = false)
 	@Final
 	private RecipeBookmark<R, I> recipeBookmark;
-
-	@Shadow(remap = false)
-	private Optional<IRecipeLayoutDrawable<R>> getRecipeLayoutDrawable() {
-		throw new AssertionError();
-	}
 
 	@Unique
 	private boolean justenoughtaglib$isTagRecipe() {
@@ -162,64 +152,75 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		return ingredientHelper.getDisplayName(recipeOutput.getIngredient());
 	}
 
-	@Inject(method = "handleClick", remap = false, at = @At("HEAD"), cancellable = true)
-	private void justenoughtaglib$handleLeftClick(
-		UserInput input,
-		IInternalKeyMappings keyBindings,
-		CallbackInfoReturnable<Boolean> cir
+	@Redirect(
+		method = "handleClick",
+		at = @At(
+			value = "INVOKE",
+			target = "Lmezz/jei/common/transfer/RecipeTransferUtil;getTransferRecipeError(Lmezz/jei/api/recipe/transfer/IRecipeTransferManager;Lnet/minecraft/world/inventory/AbstractContainerMenu;Lmezz/jei/api/gui/IRecipeLayoutDrawable;Lnet/minecraft/world/entity/player/Player;)Ljava/util/Optional;"
+		),
+		remap = false
+	)
+	private Optional<IRecipeTransferError> justenoughtaglib$getPreferredTransferError(
+		IRecipeTransferManager recipeTransferManager,
+		AbstractContainerMenu container,
+		IRecipeLayoutDrawable<R> focusedLayout,
+		Player player
 	) {
-		if (input.is(keyBindings.getLeftClick()) && justenoughtaglib$tryTransferRecipe(input)) {
-			cir.setReturnValue(true);
-		}
-	}
-
-	@Unique
-	private boolean justenoughtaglib$tryTransferRecipe(UserInput input) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Screen screen = minecraft.screen;
-		Player player = minecraft.player;
-		if (player == null || !(screen instanceof AbstractContainerScreen<?> containerScreen)) {
-			return false;
-		}
-
-		IRecipeLayoutDrawable<R> focusedLayout = getRecipeLayoutDrawable().orElse(null);
-		if (focusedLayout == null) {
-			return false;
-		}
-
-		IRecipeTransferManager recipeTransferManager = Internal.getJeiRuntime().getRecipeTransferManager();
-		AbstractContainerMenu container = containerScreen.getMenu();
-		boolean simulate = input.isSimulate();
-		Optional<IRecipeLayoutDrawable<R>> selectedLayout = justenoughtaglib$selectTransferLayout(
+		IRecipeLayoutDrawable<R> selectedLayout = justenoughtaglib$selectTransferLayout(
 			focusedLayout,
 			recipeTransferManager,
 			container,
-			player,
-			simulate
+			player
 		);
+		return RecipeTransferUtil.getTransferRecipeError(
+			recipeTransferManager,
+			container,
+			selectedLayout,
+			player
+		);
+	}
 
-		if (simulate) {
-			return selectedLayout.isPresent();
-		}
-		return selectedLayout
-			.map(layout -> RecipeTransferUtil.transferRecipe(
-				recipeTransferManager,
-				container,
-				layout,
-				player,
-				Screen.hasShiftDown()
-			))
-			.orElse(false);
+	@Redirect(
+		method = "handleClick",
+		at = @At(
+			value = "INVOKE",
+			target = "Lmezz/jei/common/transfer/RecipeTransferUtil;transferRecipe(Lmezz/jei/api/recipe/transfer/IRecipeTransferManager;Lnet/minecraft/world/inventory/AbstractContainerMenu;Lmezz/jei/api/gui/IRecipeLayoutDrawable;Lnet/minecraft/world/entity/player/Player;Z)Z"
+		),
+		remap = false
+	)
+	private boolean justenoughtaglib$transferPreferredLayout(
+		IRecipeTransferManager recipeTransferManager,
+		AbstractContainerMenu container,
+		IRecipeLayoutDrawable<R> focusedLayout,
+		Player player,
+		boolean transferMax
+	) {
+		IRecipeLayoutDrawable<R> selectedLayout = justenoughtaglib$selectTransferLayout(
+			focusedLayout,
+			recipeTransferManager,
+			container,
+			player
+		);
+		return RecipeTransferUtil.transferRecipe(
+			recipeTransferManager,
+			container,
+			selectedLayout,
+			player,
+			transferMax
+		);
 	}
 
 	@Unique
-	private Optional<IRecipeLayoutDrawable<R>> justenoughtaglib$selectTransferLayout(
+	private IRecipeLayoutDrawable<R> justenoughtaglib$selectTransferLayout(
 		IRecipeLayoutDrawable<R> focusedLayout,
 		IRecipeTransferManager recipeTransferManager,
 		AbstractContainerMenu container,
-		Player player,
-		boolean simulate
+		Player player
 	) {
+		if (!justenoughtaglib$isTagRecipe()) {
+			return focusedLayout;
+		}
+
 		Predicate<IRecipeLayoutDrawable<R>> allowed = layout -> {
 			IRecipeTransferError error = RecipeTransferUtil
 				.getTransferRecipeError(recipeTransferManager, container, layout, player)
@@ -227,17 +228,11 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 			return error == null || error.getType().allowsTransfer;
 		};
 
-		if (!justenoughtaglib$isTagRecipe()) {
-			return !simulate || allowed.test(focusedLayout)
-				? Optional.of(focusedLayout)
-				: Optional.empty();
-		}
-
 		return TransferLayoutPolicy.selectPreferredTransferLayout(
 			focusedLayout,
 			this::justenoughtaglib$createUnfocusedTagRecipeLayout,
 			allowed
-		);
+		).orElse(focusedLayout);
 	}
 
 	@Unique
@@ -251,7 +246,6 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 			4
 		);
 	}
-
 
 	private static final class RecipeFavoriteOverlay implements IDrawable {
 		private final IDrawable icon = Internal.getTextures().getRecipeBookmark();
