@@ -16,10 +16,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * RETURN 处捕获"展开结果 → tag"，并按已加载的 tag recipe 书签收窄展示成员；
  * 窗口外的 getItems（配方注册、铁砧材料、酿造容器枚举等）由
  * {@link TagSlotTracker#isBuilding()} 守卫排除。
- *
- * <p>目标是 vanilla 类，必须放在 loader 模块（fabric/forge 各一份）：
- * common 模块无 refmap，不能混入需要 SRG/intermediary 重映射的 vanilla 目标；
- * 各 loader 的 mixin AP 会自动生成重映射条目。
  */
 @Mixin(Ingredient.class)
 public abstract class MixinIngredient {

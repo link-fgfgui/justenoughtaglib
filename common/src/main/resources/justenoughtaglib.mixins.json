@@ -18,7 +18,9 @@
         "MixinRecipeBookmarkElement",
         "MixinRecipeLayoutBuilder",
         "MixinRecipeSlotBuilder",
-        "MixinTagInfoRecipeCategory"
+        "MixinTagInfoRecipeCategory",
+
+        "MixinIngredient"
     ],
     "server": [
     ],

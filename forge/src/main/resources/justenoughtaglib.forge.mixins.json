@@ -7,8 +7,6 @@
     "mixins": [
     ],
     "client": [
-        "MixinTitleScreen",
-        "MixinIngredient"
     ],
     "server": [
     ],
