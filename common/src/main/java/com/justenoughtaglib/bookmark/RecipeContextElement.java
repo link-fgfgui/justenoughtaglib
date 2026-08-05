@@ -1,7 +1,7 @@
 package com.justenoughtaglib.bookmark;
 
-import net.minecraft.resources.ResourceLocation;
-
+import com.justenoughtaglib.mixin.MixinRecipesGuiAccessor;
+import com.justenoughtaglib.tag.RecipeGuiSelection;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.ingredients.IIngredientHelper;
@@ -20,8 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Carries the recipe layout and slot role needed for output bookmark creation
- * and tag-input navigation.
+ * Carries the recipe layout and slot role needed for output bookmark creation.
  *
  * <p>The element deliberately is not itself a bookmark. It is only used while JEI
  * handles the click on a displayed recipe ingredient.</p>
@@ -66,19 +65,20 @@ public final class RecipeContextElement<T> implements IElement<T> {
 
 	@Override
 	public void show(IRecipesGui recipesGui, FocusUtil focusUtil, List<RecipeIngredientRole> roles) {
-		ResourceLocation recipeTypeUid = recipeLayout.getRecipeCategory().getRecipeType().getUid();
-		if (role == RecipeIngredientRole.INPUT && recipeTypeUid.getPath().startsWith("tag_recipes/")) {
-			showTagRecipe(recipesGui, recipeLayout);
-			return;
-		}
-
 		ITypedIngredient<?> ingredient = getTypedIngredient();
 		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, roles);
 		recipesGui.show(focuses);
-	}
 
-	private static <R> void showTagRecipe(IRecipesGui recipesGui, IRecipeLayoutDrawable<R> recipeLayout) {
-		recipesGui.showRecipes(recipeLayout.getRecipeCategory(), List.of(recipeLayout.getRecipe()), List.of());
+		if (role == RecipeIngredientRole.OUTPUT &&
+			recipeLayout.getRecipeCategory().getRecipeType().getUid().getPath().startsWith("tag_recipes/") &&
+			roles.contains(RecipeIngredientRole.INPUT) &&
+			recipesGui instanceof MixinRecipesGuiAccessor accessor &&
+			accessor.justenoughtaglib$getLogic() instanceof RecipeGuiSelection selection) {
+			selection.justenoughtaglib$selectRecipe(
+				recipeLayout.getRecipeCategory(),
+				recipeLayout.getRecipe()
+			);
+		}
 	}
 
 	@Override

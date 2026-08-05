@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * {@code Ingredient.getItems()}（crafting 扩展、IIngredientConsumer /
  * IIngredientAcceptor 默认方法、锻造扩展等）。在布局构建窗口内
  * （{@link TagSlotTracker#beginBuild()} 与 {@code associateLayout} 之间）的
- * RETURN 处捕获"展开结果 → tag"，键与槽内实际展示内容（同一份缓存数组）一致；
+ * RETURN 处捕获"展开结果 → tag"，并按已加载的 tag recipe 书签收窄展示成员；
  * 窗口外的 getItems（配方注册、铁砧材料、酿造容器枚举等）由
  * {@link TagSlotTracker#isBuilding()} 守卫排除。
  *
@@ -24,10 +24,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Ingredient.class)
 public abstract class MixinIngredient {
 
-	@Inject(method = "getItems", at = @At("RETURN"))
+	@Inject(method = "getItems", at = @At("RETURN"), cancellable = true)
 	private void justenoughtaglib$captureTag(CallbackInfoReturnable<ItemStack[]> cir) {
 		if (TagSlotTracker.isBuilding()) {
-			TagSlotTracker.capture((Ingredient) (Object) this, cir.getReturnValue());
+			cir.setReturnValue(TagSlotTracker.captureAndApplyPreference(
+				(Ingredient) (Object) this,
+				cir.getReturnValue()
+			));
 		}
 	}
 }

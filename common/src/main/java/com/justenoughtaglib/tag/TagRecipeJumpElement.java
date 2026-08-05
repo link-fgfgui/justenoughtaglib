@@ -22,17 +22,6 @@ import net.minecraft.tags.TagKey;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 点击"内容恰好是某个 tag 成员集"的配方输入槽时，跳转到该 tag 的 recipe 页面。
- *
- * <p>仅当 {@link TagSlotTracker} 在布局构建期捕获到该槽的 tag 时才创建（精确匹配），
- * 跳转目标复用 JEI 内置的 tag 分类（{@code minecraft:tag_recipes/item}）与其中的
- * {@link ITagInfoRecipe} 实例——与 tag 书签点击同一条展示路径（
- * {@code showRecipes(分类, 配方, OUTPUT focus)}），因此页面内容、书签、焦点行为一致。
- *
- * <p>解析失败（分类未注册、该 tag 没有 recipe 实例等异常场景）时回退为原版行为：
- * 打开点击物品的 recipe 页面，绝不吞掉点击。
- */
 public final class TagRecipeJumpElement<T> implements IElement<T> {
 	private static final ResourceLocation TAG_RECIPE_TYPE_UID = new ResourceLocation("minecraft", "tag_recipes/item");
 
@@ -77,12 +66,11 @@ public final class TagRecipeJumpElement<T> implements IElement<T> {
 			showItemRecipes(recipesGui, focusUtil, roles);
 			return;
 		}
-		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, List.of(RecipeIngredientRole.OUTPUT));
+		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, List.of(RecipeIngredientRole.INPUT));
 		IRecipeCategory<ITagInfoRecipe> category = Internal.getJeiRuntime().getRecipeManager().getRecipeCategory(recipeType.get());
 		recipesGui.showRecipes(category, List.of(tagRecipe), focuses);
 	}
 
-	/** 回退：与 {@code IngredientElement} 行为一致，按点击物品打开 recipe 页面。 */
 	private void showItemRecipes(IRecipesGui recipesGui, FocusUtil focusUtil, List<RecipeIngredientRole> roles) {
 		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, roles);
 		recipesGui.show(focuses);

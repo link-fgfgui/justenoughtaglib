@@ -1,5 +1,6 @@
 package com.justenoughtaglib.mixin;
 
+import com.justenoughtaglib.transfer.TransferLayoutPolicy;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.recipe.IFocusFactory;
@@ -73,8 +74,7 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 	private IFocusGroup justenoughtaglib$focusTagRecipe(IFocusFactory focusFactory) {
 		if (justenoughtaglib$isTagRecipe()) {
 			return focusFactory.createFocusGroup(List.of(
-				focusFactory.createFocus(RecipeIngredientRole.INPUT, recipeBookmark.getRecipeOutput()),
-				focusFactory.createFocus(RecipeIngredientRole.OUTPUT, recipeBookmark.getRecipeOutput())
+				focusFactory.createFocus(RecipeIngredientRole.INPUT, recipeBookmark.getRecipeOutput())
 			));
 		}
 		return focusFactory.getEmptyFocusGroup();
@@ -103,7 +103,7 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 			List.of(recipeBookmark.getRecipe()),
 			focusUtil.createFocuses(
 				recipeBookmark.getRecipeOutput(),
-				List.of(RecipeIngredientRole.INPUT, RecipeIngredientRole.OUTPUT)
+				List.of(RecipeIngredientRole.INPUT)
 			)
 		);
 		ci.cancel();
@@ -233,7 +233,7 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 				: Optional.empty();
 		}
 
-		return TransferLayoutPolicy.justenoughtaglib$selectPreferredTransferLayout(
+		return TransferLayoutPolicy.selectPreferredTransferLayout(
 			focusedLayout,
 			this::justenoughtaglib$createUnfocusedTagRecipeLayout,
 			allowed

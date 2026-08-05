@@ -4,7 +4,7 @@
 
 **自动化测试仅限 Java 层。** 允许的自动化验证手段：
 
-- Gradle 构建（`./gradlew.bat build`，必须 `JAVA_HOME=C:/Users/link/.jdks/jdk-17.0.20+8`）
+- Gradle 构建
 - 编译期 mixin AP 校验、refmap 检查、jar 内 class/资源清单检查
 - `javap` 字节码/常量池静态检查
 - Java 单元测试
@@ -23,7 +23,7 @@
 
 验证"tag recipe 书签写入聚焦物品"：
 
-1. 启动客户端：`JAVA_HOME="C:/Users/link/.jdks/jdk-17.0.20+8" ./gradlew.bat :fabric:runClient`
+1. 启动客户端：`fabric:runClient`
 2. 进世界 → 点 JEI 底部搜索框输入 `jungle_planks` → 点结果 → 按 `U`
 3. 左侧分类栏点 tag 分类（`tag_recipes/item`）→ 悬停配方卡片右上角点星标收藏
 4. 退出游戏，检查 `fabric/run/config/jei/world/local/<世界>/bookmarks.ini`

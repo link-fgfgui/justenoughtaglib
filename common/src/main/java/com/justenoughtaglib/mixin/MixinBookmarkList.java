@@ -1,6 +1,7 @@
 package com.justenoughtaglib.mixin;
 
 import com.justenoughtaglib.bookmark.RecipeContextElement;
+import com.justenoughtaglib.tag.TagBookmarkPreferences;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -19,6 +20,9 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.List;
 
 /**
  * Converts clicks on recipe output slots into JEI's standard recipe bookmarks.
@@ -30,6 +34,14 @@ public abstract class MixinBookmarkList {
 	@Shadow(remap = false)
 	@Final
 	private IIngredientManager ingredientManager;
+	@Shadow(remap = false)
+	@Final
+	private List<IBookmark> bookmarksList;
+
+	@Inject(method = "notifyListenersOfChange", remap = false, at = @At("HEAD"))
+	private void justenoughtaglib$refreshTagBookmarkPreferences(CallbackInfo ci) {
+		TagBookmarkPreferences.refresh(bookmarksList);
+	}
 
 	@Inject(method = "onElementBookmarked", remap = false, at = @At("HEAD"), cancellable = true)
 	private <T> void justenoughtaglib$bookmarkRecipeOutput(

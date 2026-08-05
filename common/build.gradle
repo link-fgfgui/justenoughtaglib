@@ -9,7 +9,7 @@ legacyForge {
         accessTransformers = ["src/main/resources/META-INF/accesstransformer.cfg"]
     }
     parchment {
-        minecraftVersion = parchment_minecraft
+        minecraftVersion = minecraft_version
         mappingsVersion = parchment_version
     }
 }
@@ -21,14 +21,11 @@ dependencies {
     compileOnly "mezz.jei:jei-${minecraft_version}-common:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-gui:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-lib:${jei_version}"
+    compileOnlyApi "fuzs.forgeconfigapiport:forgeconfigapiport-common:${forge_config_api_port_version}"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.2'
 }
 
-// legacyForge 重排了配置继承，test 源集默认拿不到主源集的依赖和
-// MC/运行时依赖；这里显式补回：编译直接用主源集 compileClasspath
-// （含 vanilla/JEI/mixin），运行时用主 runtimeClasspath（含 vanilla/gson/guava），
-// 另加 JEI 各构件（主工程仅 compileOnly）。
 dependencies {
     testImplementation sourceSets.main.output
     testCompileOnly files(sourceSets.main.compileClasspath)
@@ -57,4 +54,10 @@ configurations {
 artifacts {
     commonJava sourceSets.main.java.sourceDirectories.singleFile
     commonResources sourceSets.main.resources.sourceDirectories.singleFile
+}
+repositories {
+    maven {
+        name = 'Fuzs Mod Resources'
+        url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+    }
 }

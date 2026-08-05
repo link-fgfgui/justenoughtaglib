@@ -23,13 +23,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * Keeps recipe layout context on output-slot bookmark clicks and tag-input
- * navigation clicks, and jumps to the tag recipe page when a non-tag recipe's
- * input slot content exactly matches a captured tag's member list.
+ * Keeps recipe context on output-slot bookmark clicks. Unbound tag inputs jump
+ * to their tag recipe; bookmark-bound inputs use normal item R/U behavior.
  */
 @Mixin(RecipeGuiLayouts.class)
 public abstract class MixinRecipeGuiLayouts {
@@ -68,15 +66,18 @@ public abstract class MixinRecipeGuiLayouts {
 	) {
 		RecipeIngredientRole role = slotUnderMouse.slot().getRole();
 		IElement<?> element;
-		if (role == RecipeIngredientRole.OUTPUT || (role == RecipeIngredientRole.INPUT && isTagRecipe(recipeLayout))) {
+		if (role == RecipeIngredientRole.OUTPUT) {
 			element = new RecipeContextElement<>(recipeLayout, displayedIngredient, role);
 		} else if (role == RecipeIngredientRole.INPUT) {
-			// 输入槽内容恰好是构建期捕获的某个 tag 成员集 → 精确跳转该 tag 页面；
-			// 未捕获（自定义分类、直喂列表等）回退原版物品页。
-			List<ItemStack> slotStacks = slotUnderMouse.slot().getItemStacks().toList();
-			element = TagSlotTracker.findTag(recipeLayout, slotStacks)
-				.<IElement<?>>map(tag -> new TagRecipeJumpElement<>(displayedIngredient, tag))
-				.orElseGet(() -> new IngredientElement<>(displayedIngredient));
+			if (isTagRecipe(recipeLayout)) {
+				element = new IngredientElement<>(displayedIngredient);
+			} else {
+				List<ItemStack> slotStacks = slotUnderMouse.slot().getItemStacks().toList();
+				element = TagSlotTracker.findTagData(recipeLayout, slotStacks)
+					.filter(data -> !data.preferred())
+					.<IElement<?>>map(data -> new TagRecipeJumpElement<>(displayedIngredient, data.tag()))
+					.orElseGet(() -> new IngredientElement<>(displayedIngredient));
+			}
 		} else {
 			element = new IngredientElement<>(displayedIngredient);
 		}

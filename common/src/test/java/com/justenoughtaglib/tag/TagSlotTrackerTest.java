@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * TagSlotTracker 捕获/查询契约的无头单元测试：
@@ -244,5 +246,50 @@ class TagSlotTrackerTest {
 
 		assertEquals(Optional.of(tagA), TagSlotTracker.findTag(layoutA, List.of(new ItemStack(OAK))));
 		assertEquals(Optional.of(tagB), TagSlotTracker.findTag(layoutB, List.of(new ItemStack(OAK))));
+	}
+
+	@Test
+	void tagBookmarkPreferenceSelectsTheRecordedMember() {
+		ItemStack oak = new ItemStack(OAK);
+		ItemStack spruce = new ItemStack(SPRUCE);
+
+		ItemStack[] selected = TagBookmarkPreferences.selectPreferred(
+			new ItemStack(SPRUCE),
+			new ItemStack[]{oak, spruce}
+		);
+
+		assertEquals(1, selected.length);
+		assertSame(spruce, selected[0]);
+	}
+
+	@Test
+	void invalidTagBookmarkPreferenceKeepsTheFullTag() {
+		ItemStack[] expanded = {new ItemStack(OAK)};
+
+		ItemStack[] selected = TagBookmarkPreferences.selectPreferred(
+			new ItemStack(SPRUCE),
+			expanded
+		);
+
+		assertSame(expanded, selected);
+	}
+
+	@Test
+	void narrowedSlotKeepsOriginalTagMetadata() {
+		TagKey<Item> tag = tag("preferred_planks");
+		ItemStack oak = new ItemStack(OAK);
+		ItemStack spruce = new ItemStack(SPRUCE);
+		ItemStack[] expanded = {oak, spruce};
+		ItemStack[] selected = {spruce};
+
+		TagSlotTracker.beginBuild();
+		TagSlotTracker.captureSelection(tag, expanded, selected);
+		TagSlotTracker.TagSlotData data = TagSlotTracker.findCurrentTagData(List.of(spruce))
+			.orElseThrow();
+
+		assertEquals(tag, data.tag());
+		assertTrue(data.preferred());
+		assertEquals(List.of(OAK, SPRUCE), data.members().stream().map(ItemStack::getItem).toList());
+		TagSlotTracker.associateLayout(null);
 	}
 }

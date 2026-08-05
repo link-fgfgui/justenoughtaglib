@@ -1,17 +1,21 @@
 package com.justenoughtaglib.mixin;
 
+import com.justenoughtaglib.tag.TagBookmarkPreferences;
+import com.justenoughtaglib.tag.TagTooltipHelper;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.recipe.IFocusGroup;
-import mezz.jei.api.runtime.IJeiRuntime;
-import mezz.jei.common.Internal;
 import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import mezz.jei.library.plugins.jei.tags.TagInfoRecipeCategory;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
 import java.util.Optional;
 
 @Mixin(value = TagInfoRecipeCategory.class, remap = false)
@@ -22,36 +26,29 @@ abstract class MixinTagInfoRecipeCategory {
 		cancellable = true,
 		remap = false
 	)
-	private void justenoughtaglib$setFocusedRecipe(
+	private void justenoughtaglib$usePreferredTagMember(
 		IRecipeLayoutBuilder builder,
 		ITagInfoRecipe recipe,
 		IFocusGroup focuses,
 		CallbackInfo ci
 	) {
-		IJeiRuntime runtime;
-		try {
-			runtime = Internal.getJeiRuntime();
-		} catch (IllegalStateException e) {
-			// JEI 注册配方阶段（PluginLoader.createRecipeManager，早于运行时创建）
-			// 也会调用 setRecipe 构建 ingredient supplier；此时 getJeiRuntime()
-			// 必然抛 ISE（仅当 jeiRuntime == null 时抛），且 focuses 恒为空，
-			// 放行原方法——否则异常会让所有 tag recipe 注册失败、整个 tag 分类消失。
-			return;
-		}
-		Optional<ITypedIngredient<?>> focusedMember = TagBookmarkFocus.find(
-			recipe,
-			focuses,
-			runtime.getIngredientManager()
-		);
-		if (focusedMember.isEmpty()) {
+		Optional<ITypedIngredient<?>> preferred = TagBookmarkPreferences.findPreferred(recipe);
+		if (preferred.isEmpty()) {
 			return;
 		}
 
-		builder.addInputSlot()
-			.addTypedIngredient(focusedMember.get())
+		IRecipeSlotBuilder input = builder.addInputSlot()
+			.addTypedIngredient(preferred.get())
 			.setStandardSlotBackground();
-		builder.addOutputSlot()
-			.addTypedIngredient(focusedMember.get());
+		List<ItemStack> members = recipe.getTypedIngredients().stream()
+			.map(ingredient -> ingredient.getIngredient(VanillaTypes.ITEM_STACK))
+			.flatMap(Optional::stream)
+			.toList();
+		TagTooltipHelper.addTagTooltip(input, recipe.getTag(), members);
+
+		for (ITypedIngredient<?> member : recipe.getTypedIngredients()) {
+			builder.addOutputSlot().addTypedIngredient(member);
+		}
 		ci.cancel();
 	}
 }

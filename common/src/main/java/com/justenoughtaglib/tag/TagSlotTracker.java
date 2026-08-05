@@ -20,7 +20,8 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * 在配方布局构建期捕获"槽内容 == tag 成员集"的事实，供点击跳转等场景精确查询。
+ * 在配方布局构建期捕获槽的 tag 来源，并把完整成员与书签收窄后的成员
+ * 映射到同一份 tag 元数据，供 tooltip、点击导航和交互语义查询。
  *
  * <p>tag 身份在 {@link Ingredient#getItems()} 展开的那一刻丢失（展开后只剩物品列表）。
  * JEI 所有展开路径最终都调用同一个 {@code getItems()}（crafting 扩展、
@@ -40,20 +41,25 @@ import java.util.WeakHashMap;
  * （WeakHashMap）。点击时只查询鼠标所在布局自己的映射，因此不存在跨页面/跨布局的
  * 陈旧条目——这是比"全局反向扫描"精确的根本原因。
  *
- * <p>键是展开后物品的 {@link Item} 列表（顺序敏感的全等匹配）。tag 展开恒为 count=1
- * 的无 NBT 栈，按物品身份比较即可，且与槽内实际展示的内容（同一份缓存展开结果）
- * 天然一致。
+ * <p>键是槽内实际物品的 {@link Item} 列表（顺序敏感的全等匹配）。未绑定时记录
+ * 完整 tag 成员；有 bookmark 绑定时还记录单物品键，但值中继续保存完整成员列表。
  */
 public final class TagSlotTracker {
 	private TagSlotTracker() {
 	}
 
 	/** 当前正在构建的布局的捕获表；仅客户端线程访问，ThreadLocal 兜底其它线程。 */
-	private static final ThreadLocal<Map<List<Item>, TagKey<?>>> CURRENT_BUILD = new ThreadLocal<>();
+	private static final ThreadLocal<Map<List<Item>, TagSlotData>> CURRENT_BUILD = new ThreadLocal<>();
 
 	/** 布局实例 → 该布局构建期捕获的表。布局被回收后条目自动消失。 */
-	private static final Map<RecipeLayout, Map<List<Item>, TagKey<?>>> LAYOUT_TAGS =
+	private static final Map<RecipeLayout, Map<List<Item>, TagSlotData>> LAYOUT_TAGS =
 		Collections.synchronizedMap(new WeakHashMap<>());
+
+	public record TagSlotData(TagKey<?> tag, List<ItemStack> members, boolean preferred) {
+		public TagSlotData {
+			members = members.stream().map(ItemStack::copy).toList();
+		}
+	}
 
 	/**
 	 * 由 {@code RecipeLayoutBuilder.<init>} 调用：开始一次新的布局构建捕获。
@@ -78,18 +84,74 @@ public final class TagSlotTracker {
 		if (ingredient == null) {
 			return;
 		}
-		Map<List<Item>, TagKey<?>> build = CURRENT_BUILD.get();
+		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
 		if (build == null) {
 			return;
 		}
-		getTag(ingredient).ifPresent(tag -> {
-			List<Item> items = Arrays.stream(expandedStacks)
-				.map(ItemStack::getItem)
-				.toList();
-			// 同内容重复捕获（同一 tag 被多次展开、或同页两个配方共用）
-			// 保留首次结果，与 JEI 反查的 findFirst 语义一致。
-			build.putIfAbsent(items, tag);
-		});
+		getTag(ingredient).ifPresent(tag -> capture(
+			build,
+			expandedStacks,
+			new TagSlotData(tag, List.of(expandedStacks), false),
+			false
+		));
+	}
+
+	/** Captures the original tag membership, then applies any loaded tag bookmark preference. */
+	public static ItemStack[] captureAndApplyPreference(Ingredient ingredient, ItemStack[] expandedStacks) {
+		Optional<TagKey<Item>> tag = getTag(ingredient);
+		if (tag.isEmpty()) {
+			return expandedStacks;
+		}
+
+		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
+		if (build == null) {
+			return expandedStacks;
+		}
+
+		ItemStack[] selectedStacks = TagBookmarkPreferences.apply(tag.get(), expandedStacks);
+		captureSelection(build, tag.get(), expandedStacks, selectedStacks);
+		return selectedStacks;
+	}
+
+	static void captureSelection(
+		TagKey<?> tag,
+		ItemStack[] expandedStacks,
+		ItemStack[] selectedStacks
+	) {
+		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
+		if (build != null) {
+			captureSelection(build, tag, expandedStacks, selectedStacks);
+		}
+	}
+
+	private static void captureSelection(
+		Map<List<Item>, TagSlotData> build,
+		TagKey<?> tag,
+		ItemStack[] expandedStacks,
+		ItemStack[] selectedStacks
+	) {
+		TagSlotData original = new TagSlotData(tag, List.of(expandedStacks), false);
+		capture(build, expandedStacks, original, false);
+		if (selectedStacks != expandedStacks) {
+			TagSlotData preferred = new TagSlotData(tag, List.of(expandedStacks), true);
+			capture(build, selectedStacks, preferred, true);
+		}
+	}
+
+	private static void capture(
+		Map<List<Item>, TagSlotData> build,
+		ItemStack[] stacks,
+		TagSlotData data,
+		boolean replace
+	) {
+		List<Item> items = Arrays.stream(stacks)
+			.map(ItemStack::getItem)
+			.toList();
+		if (replace) {
+			build.put(items, data);
+		} else {
+			build.putIfAbsent(items, data);
+		}
 	}
 
 	/**
@@ -121,7 +183,7 @@ public final class TagSlotTracker {
 
 	/** 由 {@code RecipeLayoutBuilder.buildRecipeLayout} 返回时调用：把本次构建的捕获挂到布局上。 */
 	public static void associateLayout(RecipeLayout layout) {
-		Map<List<Item>, TagKey<?>> build = CURRENT_BUILD.get();
+		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
 		CURRENT_BUILD.remove();
 		if (layout == null || build == null || build.isEmpty()) {
 			return;
@@ -130,21 +192,37 @@ public final class TagSlotTracker {
 	}
 
 	/**
-	 * 查询某个布局内"内容恰好为某个 tag 成员集"的槽。
+	 * 查询某个布局内由 tag Ingredient 构建的槽，包括 bookmark 收窄后的单物品槽。
 	 *
 	 * @return 槽内容对应的 tag；该槽不是由 tag Ingredient 构建时为空。
 	 */
 	public static Optional<TagKey<?>> findTag(IRecipeLayoutDrawable<?> layout, List<ItemStack> itemStacks) {
+		return findTagData(layout, itemStacks).map(TagSlotData::tag);
+	}
+
+	public static Optional<TagSlotData> findTagData(
+		IRecipeLayoutDrawable<?> layout,
+		List<ItemStack> itemStacks
+	) {
 		if (!(layout instanceof RecipeLayout recipeLayout)) {
 			return Optional.empty();
 		}
-		Map<List<Item>, TagKey<?>> build = LAYOUT_TAGS.get(recipeLayout);
+		Map<List<Item>, TagSlotData> build = LAYOUT_TAGS.get(recipeLayout);
 		if (build == null) {
 			return Optional.empty();
 		}
-		List<Item> items = itemStacks.stream()
-			.map(ItemStack::getItem)
-			.toList();
-		return Optional.ofNullable(build.get(items));
+		return Optional.ofNullable(build.get(itemKey(itemStacks)));
+	}
+
+	public static Optional<TagSlotData> findCurrentTagData(List<ItemStack> itemStacks) {
+		Map<List<Item>, TagSlotData> build = CURRENT_BUILD.get();
+		if (build == null) {
+			return Optional.empty();
+		}
+		return Optional.ofNullable(build.get(itemKey(itemStacks)));
+	}
+
+	private static List<Item> itemKey(List<ItemStack> itemStacks) {
+		return itemStacks.stream().map(ItemStack::getItem).toList();
 	}
 }

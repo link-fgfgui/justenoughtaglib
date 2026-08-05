@@ -7,14 +7,17 @@
     "mixins": [
     ],
     "client": [
-        "MixinMinecraft",
         "MixinClientConfig",
+        "MixinIngredientLookupStateAccessor",
         "MixinRecipeLayoutAccessor",
         "MixinRecipeBookmark",
+        "MixinRecipeGuiLogic",
         "MixinRecipeGuiLayouts",
+        "MixinRecipesGuiAccessor",
         "MixinBookmarkList",
         "MixinRecipeBookmarkElement",
         "MixinRecipeLayoutBuilder",
+        "MixinRecipeSlotBuilder",
         "MixinTagInfoRecipeCategory"
     ],
     "server": [
@@ -23,4 +26,3 @@
         "defaultRequire": 1
     }
 }
-

@@ -17,6 +17,9 @@
     "entrypoints": {
         "main": [
             "com.justenoughtaglib.JustEnoughTagLibFabric"
+        ],
+        "jei_mod_plugin": [
+            "com.justenoughtaglib.FabricJeiPlugin"
         ]
     },
     "mixins": [
@@ -26,12 +29,9 @@
     "depends": {
         "fabricloader": ">=0.14",
         "fabric": "*",
+        "forgeconfigapiport": ">=${forge_config_api_port_version}",
         "minecraft": "${minecraft_version}",
         "java": ">=17",
-        "jei": "${jei_version_range_fabric}"
-    },
-    "suggests": {
-        "another-mod": "*"
+        "jei": ">=${jei_version}"
     }
 }
-  

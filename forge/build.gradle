@@ -2,7 +2,12 @@ plugins {
     id 'multiloader-loader'
     id 'net.neoforged.moddev.legacyforge'
 }
-
+repositories {
+    maven {
+        name = 'Fuzs Mod Resources'
+        url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+    }
+}
 mixin {
     add(sourceSets.main, "${mod_id}.refmap.json")
 
@@ -20,7 +25,7 @@ legacyForge {
         accessTransformers = ["src/main/resources/META-INF/accesstransformer.cfg"]
     }
     parchment {
-        minecraftVersion = parchment_minecraft
+        minecraftVersion = minecraft_version
         mappingsVersion = parchment_version
     }
     runs {
