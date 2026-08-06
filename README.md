@@ -1,66 +1,66 @@
 # JustEnoughTagLib
 
-一个面向 **Minecraft 1.20.1 + JEI** 的客户端物品标签配方（Tag Recipe）增强 Mod，同时支持 **Forge** 和 **Fabric**。
+A **Minecraft 1.20.1 + JEI** client-side item tag recipe enhancement mod, supporting both **Forge** and **Fabric**.
 
-虽然名字里有 "Lib"，它目前是 JEI 的功能扩展，而非供其他 Mod 调用的通用程序库。核心逻辑集中在 `common/src/main/java/com/justenoughtaglib/mixin` 与 `common/src/main/java/com/justenoughtaglib/tag` 两个包，通过 Mixin 改写 JEI 与原版的运行时行为实现全部功能。
+[简体中文](./README_zhs.md)
 
-## 功能特性
+## Features
 
-- **强制启用标签配方页面**：JEI 的物品标签配方分类（recipe type 形如 `minecraft:tag_recipes/item`，例如查看 `#minecraft:planks` 包含哪些物品）默认只在开发环境开放。本 Mod 通过改写 `ClientConfig#isShowTagRecipesEnabled()`，在生产环境下也始终启用。（`MixinClientConfig`）
-- **默认隐藏方块标签配方**：实用性较低的"方块标签配方"分类（`minecraft:tag_recipes/block`）默认隐藏，可通过客户端配置 `hideJeiBlockTagRecipes` 设为 `false` 恢复。（`JustEnoughTagLibJeiPlugin`）
-- **点击标签输入槽跳转**：在普通配方中点击由 tag 构造的输入槽时，直接跳到对应的标签配方页面，而不只是按物品查配方。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
-- **配方输出槽收藏为书签**：普通配方输出槽（不只是物品）可以收藏为 JEI 的**配方书签**，点击输出槽即可加入 JEI 书签栏，并带星标覆盖图与"配方分类"提示。（`RecipeContextElement` / `MixinBookmarkList` / `MixinRecipeBookmarkElement`）
-- **修复标签配方书签记录物品错误**：从某个具体物品进入标签页面后收藏，书签记录的是**该聚焦物品**，而不是 tag 成员列表的第一个物品。（`MixinRecipeBookmark`）
-- **书签重载后收窄展示**：重新加载书签后，使用同一 tag 的配方输入槽会优先显示书签选定的物品，同时保留原 tag 名称与完整成员列表的 tooltip 提示。（`TagBookmarkPreferences` / `MixinTagInfoRecipeCategory` / `MixinRecipeSlotBuilder` / `TagTooltipHelper`）
-- **配方书签完整交互**：标签配方书签支持常规的配方/用途查询（R/U 与右键），以及从书签直接执行 JEI 配方转移；当聚焦成员无法转移时会自动回退使用完整标签配方进行转移。（`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`）
-- **更明确的提示**：配方书签的 tooltip 显示物品名称与配方分类，并使用 JEI 原生的书签图标（半角星标）作为覆盖图。
+- **Force-enable tag recipe pages**: JEI's item tag recipe category (recipe type like `minecraft:tag_recipes/item`, e.g. viewing which items `#minecraft:planks` contains) is only enabled during development by default. This mod overrides `ClientConfig#isShowTagRecipesEnabled()` to keep it always enabled in production. (`MixinClientConfig`)
+- **Hide block tag recipes by default**: The less useful "block tag recipe" category (`minecraft:tag_recipes/block`) is hidden by default and can be restored by setting the client config `hideJeiBlockTagRecipes` to `false`. (`JustEnoughTagLibJeiPlugin`)
+- **Click tag input slot to jump**: Clicking a tag-constructed input slot in a normal recipe jumps directly to the corresponding tag recipe page instead of merely looking up recipes by item. (`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`)
+- **Bookmark recipe output slots**: Recipe output slots (not just items) can be bookmarked as JEI **bookmarks**. Click an output slot to add it to the JEI bookmark bar, with a star overlay and a "recipe category" tooltip. (`RecipeContextElement` / `MixinBookmarkList` / `MixinRecipeBookmarkElement`)
+- **Fix wrong item in tag recipe bookmarks**: Bookmarking after entering a tag page from a specific item records that **focused item**, not the first member of the tag list. (`MixinRecipeBookmark`)
+- **Narrow display after bookmark reload**: After reloading bookmarks, recipe input slots using the same tag prefer showing the bookmarked item while keeping the original tag name and full member list in the tooltip. (`TagBookmarkPreferences` / `MixinTagInfoRecipeCategory` / `MixinRecipeSlotBuilder` / `TagTooltipHelper`)
+- **Full bookmark interaction**: Tag recipe bookmarks support normal recipe/usages queries (R/U and right-click), as well as JEI recipe transfer directly from the bookmark; when the focused member cannot be transferred it automatically falls back to the full tag recipe. (`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`)
+- **Clearer tooltips**: The recipe bookmark tooltip shows the item name and recipe category, and uses JEI's native bookmark icon (half star) as the overlay.
 
-## 工作原理
+## How It Works
 
-标签身份在 `Ingredient#getItems()` 展开时丢失（展开后只剩物品列表）。Mod 在布局构建窗口内通过各加载器模块的 `MixinIngredient` 拦截 `getItems()` 的返回，用 `Ingredient#toJson()` 恢复 tag 来源，并把"展开结果 → tag"映射关联到当前正在构建的 `RecipeLayout`（`TagSlotTracker`）。这样点击、tooltip、书签收窄和转移都能基于**当前布局自己的数据**精确判定，避免跨页面、跨配方的陈旧命中。
+Tag identity is lost when `Ingredient#getItems()` expands (only the item list remains). While layouts are being built, the mod intercepts the return of `getItems()` through each loader module's `MixinIngredient`, recovers the tag source via `Ingredient#toJson()`, and associates the "expansion → tag" mapping with the `RecipeLayout` currently being built (`TagSlotTracker`). This way clicks, tooltips, bookmark narrowing, and transfer can all be determined precisely from the **current layout's own data**, avoiding stale hits across pages and recipes.
 
-## 依赖与版本
+## Dependencies & Versions
 
-| 依赖 | 版本 |
+| Dependency | Version |
 | --- | --- |
 | Minecraft | 1.20.1 |
 | JEI | >= 15.21.0.148 |
-| Forge | 47.2.30（FML 版本范围 `[47,)`） |
-| Fabric | Fabric API >= 0.92.11，Fabric Loader >= 0.16.10，Forge Config API Port >= 8.0.3 |
+| Forge | 47.2.30 (FML version range `[47,)`) |
+| Fabric | Fabric API >= 0.92.11, Fabric Loader >= 0.16.10, Forge Config API Port >= 8.0.3 |
 
-## 构建
+## Building
 
 ```bash
 ./gradlew build
 ```
 
-产物分别位于 `fabric/build/libs` 与 `forge/build/libs`。运行客户端：`fabric:runClient` / `forge:runClient`。
+Artifacts are output to `fabric/build/libs` and `forge/build/libs` respectively. Run the client: `fabric:runClient` / `forge:runClient`.
 
-## 安装
+## Installation
 
-将对应加载器版本的 jar 放入 `mods` 目录，与 JEI 一同使用。
+Place the jar for the corresponding loader into the `mods` directory, and use it alongside JEI.
 
-## 配置
+## Configuration
 
-客户端配置（Forge 的 `forge-client.toml`，Fabric 经 Forge Config API Port 写入）：
+Client config (Forge's `forge-client.toml`, Fabric via Forge Config API Port):
 
-- `hideJeiBlockTagRecipes`（默认 `true`）：隐藏方块标签配方分类，设为 `false` 恢复。
+- `hideJeiBlockTagRecipes` (default `true`): hides the block tag recipe category; set to `false` to restore it.
 
-## 使用与书签文件
+## Usage & Bookmark Files
 
-- 进游戏后 JEI 左侧分类栏会出现 tag 分类（`tag_recipes/item`）。
-- 普通配方中点击 tag 输入槽 → 跳转到对应标签配方页面。
-- 在标签配方页面对聚焦物品按 `U` 进入后，悬停配方卡片右上角点星标即可收藏配方书签。
-- 已收藏其它物品的 tag 书签后，使用同一 tag 的配方输入槽会自动收窄为该书签物品，悬停仍显示 tag 名称与完整成员。
+- In-game, the tag category (`tag_recipes/item`) appears in JEI's left category bar.
+- Clicking a tag input slot in a normal recipe jumps to the corresponding tag recipe page.
+- After pressing `U` on a focused item in the tag recipe page, hover the top-right corner of the recipe card and click the star to bookmark it.
+- After bookmarking a different item for a tag, recipe inputs using the same tag automatically narrow to the bookmarked item, while still showing the tag name and full members on hover.
 
-配方书签文件按世界保存于：
+Recipe bookmark files are saved per-world at:
 
 ```
-config/jei/world/local/<世界名>/bookmarks.ini
+config/jei/world/local/<world name>/bookmarks.ini
 ```
 
-（多人模式为 `config/jei/world/server/<名>_<hash>/`；世界名中的空格会替换为下划线，例如 `New World` → `New_World`。）
+(In multiplayer, this is `config/jei/world/server/<name>_<hash>/`; spaces in world names are replaced with underscores, e.g. `New World` → `New_World`.)
 
-## 许可证
+## License
 
 [LGPLv3](LICENSE)
