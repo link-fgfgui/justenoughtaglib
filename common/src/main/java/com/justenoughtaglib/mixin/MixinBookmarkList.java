@@ -58,6 +58,9 @@ public abstract class MixinBookmarkList {
 		if (!(element instanceof RecipeContextElement<?> recipeContextElement)) {
 			return;
 		}
+		if (!recipeContextElement.getRecipeLayout().getRecipeCategory().getRecipeType().getUid().getPath().startsWith("tag_recipes/")) {
+			return;
+		}
 		// ensure a output slot
 		if (recipeContextElement.getRole() != RecipeIngredientRole.OUTPUT) {
 			return;

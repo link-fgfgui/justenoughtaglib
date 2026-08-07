@@ -5,7 +5,6 @@ import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.recipe.IFocusFactory;
 import mezz.jei.api.recipe.IFocusGroup;
-import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -16,11 +15,11 @@ import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.common.Internal;
 import mezz.jei.common.gui.JeiTooltip;
 import mezz.jei.common.transfer.RecipeTransferUtil;
+import mezz.jei.common.util.SafeIngredientUtil;
 import mezz.jei.gui.bookmarks.RecipeBookmark;
 import mezz.jei.gui.overlay.elements.RecipeBookmarkElement;
 import mezz.jei.api.runtime.IRecipesGui;
 import mezz.jei.gui.util.FocusUtil;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Player;
@@ -31,6 +30,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -100,30 +100,22 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		ci.cancel();
 	}
 
-	@Inject(method = "createRenderOverlay", remap = false, at = @At("HEAD"), cancellable = true)
-	private void justenoughtaglib$useRecipeFavoriteOverlay(CallbackInfoReturnable<IDrawable> cir) {
-		cir.setReturnValue(new RecipeFavoriteOverlay());
-	}
-
 	// Keep JEI's original getTooltip flow so its Shift-gated preview and transfer
 	// hints remain additive instead of replacing the whole tooltip.
-	@Redirect(
+	@ModifyArg(
 		method = "getTooltip",
 		at = @At(
 			value = "INVOKE",
 			target = "Lmezz/jei/common/gui/JeiTooltip;add(Lnet/minecraft/network/chat/FormattedText;)V",
 			ordinal = 0
 		),
-		remap = false
+		remap = false,
+		index = 0
 	)
-	private void justenoughtaglib$replaceBookmarkTitle(
-		JeiTooltip tooltip,
-		FormattedText originalTitle
-	) {
-		tooltip.add(Component.literal(justenoughtaglib$getRecipeOutputDisplayName(
-
-				)
-		));
+	private FormattedText justenoughtaglib$replaceBookmarkTitle(FormattedText originalTitle) {
+		return justenoughtaglib$isTagRecipe()
+			? Component.literal(justenoughtaglib$getRecipeOutputDisplayName())
+			: originalTitle;
 	}
 
 	@Redirect(
@@ -141,8 +133,14 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		IIngredientRenderer<T> ingredientRenderer,
 		ITypedIngredient<T> typedIngredient
 	) {
-		tooltip.add(Component.translatable(
-				"jei.tooltip.bookmarks.recipe",recipeBookmark.getRecipeCategory().getTitle()));
+		if (justenoughtaglib$isTagRecipe()) {
+			tooltip.add(Component.translatable(
+				"jei.tooltip.bookmarks.recipe",
+				recipeBookmark.getRecipeCategory().getTitle()
+			));
+		} else {
+			SafeIngredientUtil.getTooltip(tooltip, ingredientManager, ingredientRenderer, typedIngredient);
+		}
 	}
 
 	@Unique
@@ -246,29 +244,5 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 			Internal.getTextures().getRecipePreviewBackground(),
 			4
 		);
-	}
-
-	private static final class RecipeFavoriteOverlay implements IDrawable {
-		private final IDrawable icon = Internal.getTextures().getRecipeBookmark();
-
-		@Override
-		public int getWidth() {
-			return 16;
-		}
-
-		@Override
-		public int getHeight() {
-			return 16;
-		}
-
-		@Override
-		public void draw(GuiGraphics guiGraphics, int xOffset, int yOffset) {
-			var poseStack = guiGraphics.pose();
-			poseStack.pushPose();
-			poseStack.translate(xOffset + 11, yOffset + 11, 200);
-			poseStack.scale(0.5F, 0.5F, 0.5F);
-			icon.draw(guiGraphics);
-			poseStack.popPose();
-		}
 	}
 }

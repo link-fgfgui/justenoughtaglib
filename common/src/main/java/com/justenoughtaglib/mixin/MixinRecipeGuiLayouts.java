@@ -10,10 +10,8 @@ import mezz.jei.api.gui.inputs.RecipeSlotUnderMouse;
 import mezz.jei.gui.input.ClickableIngredientInternal;
 import mezz.jei.gui.input.IClickableIngredientInternal;
 import mezz.jei.gui.overlay.elements.IElement;
-import mezz.jei.gui.overlay.elements.IngredientElement;
 import mezz.jei.gui.recipes.RecipeGuiLayouts;
 import mezz.jei.gui.recipes.RecipeLayoutWithButtons;
-import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,7 +20,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -34,19 +36,42 @@ public abstract class MixinRecipeGuiLayouts {
 	@Shadow(remap = false)
 	private List<RecipeLayoutWithButtons<?>> recipeLayoutsWithButtons;
 
-	@Inject(method = "getIngredientUnderMouse", remap = false, at = @At("HEAD"), cancellable = true)
+	@Inject(method = "getIngredientUnderMouse", remap = false, at = @At("RETURN"), cancellable = true)
 	private void justenoughtaglib$addRecipeContext(
 		double mouseX,
 		double mouseY,
 		CallbackInfoReturnable<Stream<IClickableIngredientInternal<?>>> cir
 	) {
-		Stream<IClickableIngredientInternal<?>> clickableIngredients = recipeLayoutsWithButtons.stream()
+		List<IClickableIngredientInternal<?>> customIngredients = recipeLayoutsWithButtons.stream()
 			.map(RecipeLayoutWithButtons::recipeLayout)
-			.flatMap(recipeLayout -> getClickedIngredients(recipeLayout, mouseX, mouseY));
-		cir.setReturnValue(clickableIngredients);
+			.flatMap(recipeLayout -> getCustomClickedIngredients(recipeLayout, mouseX, mouseY))
+			.toList();
+
+		// Nothing for us to change: keep JEI's original stream untouched.
+		if (customIngredients.isEmpty()) {
+			return;
+		}
+
+		// Only replace the slots we actually overrode, keeping every other
+		// original clickable (JEI's own candidates for other slots, plus any
+		// added by other mods) intact. The key is identity of the slot's
+		// displayed ITypedIngredient: the same slot returns the same cached
+		// instance through both the original path and ours, while distinct
+		// slots (even for an identical item) produce distinct instances.
+		// TypedIngredient has no equals(), so we make the reference guarantee
+		// explicit with an IdentityHashMap-backed set.
+		Set<Object> capturedSlots = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (IClickableIngredientInternal<?> custom : customIngredients) {
+			capturedSlots.add(custom.getTypedIngredient());
+		}
+
+		Stream<IClickableIngredientInternal<?>> remainingOriginal = cir.getReturnValue()
+			.filter(ingredient -> !capturedSlots.contains(ingredient.getTypedIngredient()));
+
+		cir.setReturnValue(Stream.concat(remainingOriginal, customIngredients.stream()));
 	}
 
-	private static Stream<IClickableIngredientInternal<?>> getClickedIngredients(
+	private static Stream<IClickableIngredientInternal<?>> getCustomClickedIngredients(
 		IRecipeLayoutDrawable<?> recipeLayout,
 		double mouseX,
 		double mouseY
@@ -54,34 +79,30 @@ public abstract class MixinRecipeGuiLayouts {
 		return recipeLayout.getSlotUnderMouse(mouseX, mouseY)
 			.stream()
 			.flatMap(slotUnderMouse -> slotUnderMouse.slot().getDisplayedIngredient()
-				.map(displayedIngredient -> createClickableIngredient(recipeLayout, slotUnderMouse, displayedIngredient))
+				.flatMap(displayedIngredient -> createCustomClickableIngredient(recipeLayout, slotUnderMouse, displayedIngredient))
 			.stream()
 			);
 	}
 
-	private static IClickableIngredientInternal<?> createClickableIngredient(
+	private static Optional<IClickableIngredientInternal<?>> createCustomClickableIngredient(
 		IRecipeLayoutDrawable<?> recipeLayout,
 		RecipeSlotUnderMouse slotUnderMouse,
 		ITypedIngredient<?> displayedIngredient
 	) {
 		RecipeIngredientRole role = slotUnderMouse.slot().getRole();
-		IElement<?> element;
-		if (role == RecipeIngredientRole.OUTPUT) {
-			element = new RecipeContextElement<>(recipeLayout, displayedIngredient, role);
-		} else if (role == RecipeIngredientRole.INPUT) {
-			if (isTagRecipe(recipeLayout)) {
-				element = new IngredientElement<>(displayedIngredient);
-			} else {
-				List<ItemStack> slotStacks = slotUnderMouse.slot().getItemStacks().toList();
-				element = TagSlotTracker.findTagData(recipeLayout, slotStacks)
-					.filter(data -> !data.preferred())
-					.<IElement<?>>map(data -> new TagRecipeJumpElement<>(displayedIngredient, data.tag()))
-					.orElseGet(() -> new IngredientElement<>(displayedIngredient));
-			}
+		Optional<IElement<?>> element;
+		if (role == RecipeIngredientRole.OUTPUT && isTagRecipe(recipeLayout)) {
+			element = Optional.of(new RecipeContextElement<>(recipeLayout, displayedIngredient, role));
+		} else if (role == RecipeIngredientRole.INPUT && !isTagRecipe(recipeLayout)) {
+			element = TagSlotTracker.findTagData(recipeLayout, slotUnderMouse.slot())
+				.filter(data -> !data.preferred())
+				.<IElement<?>>map(data -> new TagRecipeJumpElement<>(displayedIngredient, data.tag()));
 		} else {
-			element = new IngredientElement<>(displayedIngredient);
+			element = Optional.empty();
 		}
-		return new ClickableIngredientInternal<>(element, slotUnderMouse::isMouseOver, false, true);
+		return element.<IClickableIngredientInternal<?>>map(
+			value -> new ClickableIngredientInternal<>(value, slotUnderMouse::isMouseOver, false, true)
+		);
 	}
 
 	@Unique

@@ -1,7 +1,5 @@
 package com.justenoughtaglib.bookmark;
 
-import com.justenoughtaglib.mixin.MixinRecipesGuiAccessor;
-import com.justenoughtaglib.tag.RecipeGuiSelection;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.ingredients.IIngredientHelper;
@@ -67,18 +65,26 @@ public final class RecipeContextElement<T> implements IElement<T> {
 	public void show(IRecipesGui recipesGui, FocusUtil focusUtil, List<RecipeIngredientRole> roles) {
 		ITypedIngredient<?> ingredient = getTypedIngredient();
 		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, roles);
-		recipesGui.show(focuses);
-
 		if (role == RecipeIngredientRole.OUTPUT &&
 			recipeLayout.getRecipeCategory().getRecipeType().getUid().getPath().startsWith("tag_recipes/") &&
-			roles.contains(RecipeIngredientRole.INPUT) &&
-			recipesGui instanceof MixinRecipesGuiAccessor accessor &&
-			accessor.justenoughtaglib$getLogic() instanceof RecipeGuiSelection selection) {
-			selection.justenoughtaglib$selectRecipe(
-				recipeLayout.getRecipeCategory(),
-				recipeLayout.getRecipe()
-			);
+			roles.contains(RecipeIngredientRole.INPUT)) {
+			showRecipe(recipesGui, recipeLayout, focuses);
+			return;
 		}
+
+		recipesGui.show(focuses);
+	}
+
+	private static <R> void showRecipe(
+		IRecipesGui recipesGui,
+		IRecipeLayoutDrawable<R> recipeLayout,
+		List<IFocus<?>> focuses
+	) {
+		recipesGui.showRecipes(
+			recipeLayout.getRecipeCategory(),
+			List.of(recipeLayout.getRecipe()),
+			focuses
+		);
 	}
 
 	@Override

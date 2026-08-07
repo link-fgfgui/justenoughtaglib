@@ -8,19 +8,14 @@
     ],
     "client": [
         "MixinClientConfig",
-        "MixinIngredientLookupStateAccessor",
         "MixinRecipeLayoutAccessor",
+        "MixinRecipeSlotAccessor",
         "MixinRecipeBookmark",
-        "MixinRecipeGuiLogic",
         "MixinRecipeGuiLayouts",
-        "MixinRecipesGuiAccessor",
         "MixinBookmarkList",
         "MixinRecipeBookmarkElement",
-        "MixinRecipeLayoutBuilder",
-        "MixinRecipeSlotBuilder",
-        "MixinTagInfoRecipeCategory",
-
-        "MixinIngredient"
+        "MixinRecipeLayout",
+        "MixinRecipeLayoutBuilder"
     ],
     "server": [
     ],

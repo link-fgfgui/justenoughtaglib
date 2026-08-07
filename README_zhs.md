@@ -6,16 +6,16 @@
 
 - **强制启用标签配方页面**：JEI 的物品标签配方分类（recipe type 形如 `minecraft:tag_recipes/item`，例如查看 `#minecraft:planks` 包含哪些物品）默认只在开发环境开放。本 Mod 通过改写 `ClientConfig#isShowTagRecipesEnabled()`，在生产环境下也始终启用。（`MixinClientConfig`）
 - **默认隐藏方块标签配方**：实用性较低的"方块标签配方"分类（`minecraft:tag_recipes/block`）默认隐藏，可通过客户端配置 `hideJeiBlockTagRecipes` 设为 `false` 恢复。（`JustEnoughTagLibJeiPlugin`）
-- **点击标签输入槽跳转**：在普通配方中点击由 tag 构造的输入槽时，直接跳到对应的标签配方页面，而不只是按物品查配方。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
-- **配方输出槽收藏为书签**：普通配方输出槽（不只是物品）可以收藏为 JEI 的**配方书签**，点击输出槽即可加入 JEI 书签栏，并带星标覆盖图与"配方分类"提示。（`RecipeContextElement` / `MixinBookmarkList` / `MixinRecipeBookmarkElement`）
+- **未收藏的标签输入槽点击跳转**：在普通配方中点击由 tag 构造、且该 tag 尚未被书签收藏的输入槽时，直接跳到对应的标签配方页面；一旦该 tag 已有书签，其输入槽则回退为 JEI 正常的物品配方/用途查询。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
+- **标签配方输出槽收藏为书签**：标签配方页面的**输出槽**可以直接点击收藏为 JEI **配方书签**，并以 JEI 原生书签样式显示在书签栏。（`RecipeContextElement` / `MixinBookmarkList`）
 - **修复标签配方书签记录物品错误**：从某个具体物品进入标签页面后收藏，书签记录的是**该聚焦物品**，而不是 tag 成员列表的第一个物品。（`MixinRecipeBookmark`）
-- **书签重载后收窄展示**：重新加载书签后，使用同一 tag 的配方输入槽会优先显示书签选定的物品，同时保留原 tag 名称与完整成员列表的 tooltip 提示。（`TagBookmarkPreferences` / `MixinTagInfoRecipeCategory` / `MixinRecipeSlotBuilder` / `TagTooltipHelper`）
+- **书签重载后收窄展示**：在输入槽解析到已收藏 tag 的配方中，该输入槽以"仅显示覆盖"的方式显示书签选定的物品（不会改动槽位底层的 tag 成员列表），并在 JEI 循环展示物品时重新应用该覆盖。（`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`）
 - **配方书签完整交互**：标签配方书签支持常规的配方/用途查询（R/U 与右键），以及从书签直接执行 JEI 配方转移；当聚焦成员无法转移时会自动回退使用完整标签配方进行转移。（`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`）
-- **更明确的提示**：配方书签的 tooltip 显示物品名称与配方分类，并使用 JEI 原生的书签图标（半角星标）作为覆盖图。
+- **更明确的提示**：标签配方书签的 tooltip 显示所存物品名称与配方分类行，而非通用的原料 tooltip。（`MixinRecipeBookmarkElement`）
 
 ## 工作原理
 
-标签身份在 `Ingredient#getItems()` 展开时丢失（展开后只剩物品列表）。Mod 在布局构建窗口内通过各加载器模块的 `MixinIngredient` 拦截 `getItems()` 的返回，用 `Ingredient#toJson()` 恢复 tag 来源，并把"展开结果 → tag"映射关联到当前正在构建的 `RecipeLayout`（`TagSlotTracker`）。这样点击、tooltip、书签收窄和转移都能基于**当前布局自己的数据**精确判定，避免跨页面、跨配方的陈旧命中。
+标签身份在 JEI 把 tag 原料展开为其成员物品列表时丢失。Mod 在布局构建完成后解析每个输入槽对应的 tag（`MixinRecipeLayoutBuilder`）：对 tag 配方分类直接从配方取得 tag（`ITagInfoRecipe#getTag`），对其它配方则用 `IIngredientHelper#getTagKeyEquivalent` 从槽位成员列表恢复 tag。得到的"槽 → tag"映射按 `RecipeLayout` 缓存于 `WeakHashMap`（`TagSlotTracker`），因此点击、tooltip、书签收窄与转移都基于**当前布局自己的数据**精确判定，不会跨页面、跨配方产生陈旧命中。
 
 ## 依赖与版本
 
@@ -47,9 +47,10 @@
 ## 使用与书签文件
 
 - 进游戏后 JEI 左侧分类栏会出现 tag 分类（`tag_recipes/item`）。
-- 普通配方中点击 tag 输入槽 → 跳转到对应标签配方页面。
-- 在标签配方页面对聚焦物品按 `U` 进入后，悬停配方卡片右上角点星标即可收藏配方书签。
-- 已收藏其它物品的 tag 书签后，使用同一 tag 的配方输入槽会自动收窄为该书签物品，悬停仍显示 tag 名称与完整成员。
+- 普通配方中点击未收藏的 tag 输入槽 → 跳转到对应标签配方页面。
+- 收藏单个标签配方：直接点击其**输出槽**加入为配方书签，或使用 JEI 标准的配方收藏按钮。
+- 为某个 tag 收藏了具体物品后，使用该 tag 的配方输入槽会显示书签选定的物品。
+- 对标签配方书签按 `U`/右键 → 打开该物品的用途；按 `R`/左键 → 打开配方预览；Shift+点击 → 直接转移。
 
 配方书签文件按世界保存于：
 

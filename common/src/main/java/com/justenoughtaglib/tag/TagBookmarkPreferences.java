@@ -2,13 +2,13 @@ package com.justenoughtaglib.tag;
 
 import mezz.jei.gui.bookmarks.IBookmark;
 import mezz.jei.gui.bookmarks.RecipeBookmark;
-import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -36,31 +36,16 @@ public final class TagBookmarkPreferences {
 		preferredStacks = Map.copyOf(refreshed);
 	}
 
-	public static ItemStack[] apply(TagKey<?> tag, ItemStack[] expandedStacks) {
-		ItemStack preferred = preferredStacks.get(tag);
-		return selectPreferred(preferred, expandedStacks);
+	public static Optional<ItemStack> findPreferred(TagKey<?> tag, List<ItemStack> members) {
+		return findMatching(preferredStacks.get(tag), members);
 	}
 
-	public static Optional<ITypedIngredient<?>> findPreferred(ITagInfoRecipe recipe) {
-		ItemStack preferred = preferredStacks.get(recipe.getTag());
+	static Optional<ItemStack> findMatching(ItemStack preferred, List<ItemStack> members) {
 		if (preferred == null || preferred.isEmpty()) {
 			return Optional.empty();
 		}
-		return recipe.getTypedIngredients().stream()
-			.filter(candidate -> candidate.getIngredient() instanceof ItemStack stack &&
-				ItemStack.isSameItemSameTags(preferred, stack))
+		return members.stream()
+			.filter(member -> ItemStack.isSameItemSameTags(preferred, member))
 			.findFirst();
-	}
-
-	static ItemStack[] selectPreferred(ItemStack preferred, ItemStack[] expandedStacks) {
-		if (preferred == null || preferred.isEmpty()) {
-			return expandedStacks;
-		}
-		for (ItemStack expandedStack : expandedStacks) {
-			if (ItemStack.isSameItemSameTags(preferred, expandedStack)) {
-				return new ItemStack[]{expandedStack};
-			}
-		}
-		return expandedStacks;
 	}
 }
