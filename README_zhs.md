@@ -8,7 +8,7 @@
 - **默认隐藏方块标签配方**：实用性较低的"方块标签配方"分类（`minecraft:tag_recipes/block`）默认隐藏，可通过客户端配置 `hideJeiBlockTagRecipes` 设为 `false` 恢复。（`JustEnoughTagLibJeiPlugin`）
 - **未收藏的标签输入槽点击跳转**：在普通配方中点击由 tag 构造、且该 tag 尚未被书签收藏的输入槽时，直接跳到对应的标签配方页面；一旦该 tag 已有书签，其输入槽则回退为 JEI 正常的物品配方/用途查询。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
 - **标签配方输出槽收藏为书签**：标签配方页面的**输出槽**可以直接点击收藏为 JEI **配方书签**，并以 JEI 原生书签样式显示在书签栏。（`RecipeContextElement` / `MixinBookmarkList`）
-- **修复标签配方书签记录物品错误**：从某个具体物品进入标签页面后收藏，书签记录的是**该聚焦物品**，而不是 tag 成员列表的第一个物品。（`MixinRecipeBookmark`）
+- **修复书签记录物品错误**：从某个具体物品进入输出槽有多个的配方页面（tag 页面、多输出配方）后收藏，书签记录的是**该聚焦物品**，而不是第一个输出槽的物品。（`MixinRecipeBookmark`）
 - **书签重载后收窄展示**：在输入槽解析到已收藏 tag 的配方中，该输入槽以"仅显示覆盖"的方式显示书签选定的物品（不会改动槽位底层的 tag 成员列表），并在 JEI 循环展示物品时重新应用该覆盖。（`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`）
 - **配方书签完整交互**：标签配方书签支持常规的配方/用途查询（R/U 与右键），以及从书签直接执行 JEI 配方转移；当聚焦成员无法转移时会自动回退使用完整标签配方进行转移。（`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`）
 - **更明确的提示**：标签配方书签的 tooltip 显示所存物品名称与配方分类行，而非通用的原料 tooltip。（`MixinRecipeBookmarkElement`）
