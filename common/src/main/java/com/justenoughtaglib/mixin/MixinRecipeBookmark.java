@@ -19,17 +19,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Fixes the item stored by tag recipe bookmarks when a recipe is opened from a focus.
+ * Fixes the item stored by a recipe bookmark when a recipe is opened from a focus.
  *
  * <p>The original {@code RecipeBookmark.create} takes the item from the first
- * slot it finds (OUTPUT, then INPUT), so for tag recipes the bookmark file stored
- * the first tag member in {@code "R:...tag_recipes/...#...#item_stack&<item>"}
- * instead of the item focused when the user pressed R/U.</p>
+ * slot it finds (OUTPUT, then INPUT), so for recipes with several output slots —
+ * a tag recipe puts each member in its own output slot, and multi-output recipes
+ * simply have more than one — the bookmark stored the first output even when the
+ * user entered the layout from a later one via R/U.</p>
  *
- * This intercepts create at its entry point for tag recipes only. When the
- * layout carries a focus that appears in an output slot, the bookmark is rebuilt
- * with that focused item. Directly browsing the tag page and all non-tag recipes
- * keep JEI's original logic.
+ * This intercepts create at its entry point for every recipe. When the layout
+ * carries a focus whose item appears in an output slot, the bookmark is rebuilt
+ * with that focused item. Layouts without such a focus keep JEI's original logic
+ * (first OUTPUT slot, then first INPUT slot).
  *
  * remap = false: JEI classes and methods are not remapped at runtime on Forge
  * or Fabric.
@@ -43,10 +44,6 @@ public class MixinRecipeBookmark {
 		IIngredientManager ingredientManager,
 		CallbackInfoReturnable<RecipeBookmark<T, ?>> cir
 	) {
-		ResourceLocation recipeTypeUid = recipeLayoutDrawable.getRecipeCategory().getRecipeType().getUid();
-		if (!recipeTypeUid.getPath().startsWith("tag_recipes/")) {
-			return;
-		}
 		if (!(recipeLayoutDrawable instanceof MixinRecipeLayoutAccessor accessor)) {
 			return;
 		}
@@ -54,9 +51,9 @@ public class MixinRecipeBookmark {
 		if (focuses == null) {
 			return; // No focus (directly browsing a page); use the original logic.
 		}
+		ResourceLocation recipeUid = recipeLayoutDrawable.getRecipeCategory()
+			.getRegistryName(recipeLayoutDrawable.getRecipe());
 		for (IFocus<?> focus : focuses.getAllFocuses()) {
-			ResourceLocation recipeUid = recipeLayoutDrawable.getRecipeCategory()
-				.getRegistryName(recipeLayoutDrawable.getRecipe());
 			if (recipeUid == null) {
 				return; // Match the original logic: abandon the bookmark without a registry name.
 			}

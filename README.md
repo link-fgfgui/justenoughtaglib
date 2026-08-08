@@ -19,48 +19,23 @@ A **Minecraft 1.20.1 + JEI** client-side item tag recipe enhancement mod, suppor
 
 Tag identity is lost when JEI expands a tag ingredient into its member item list. The mod resolves the tag of each input slot after the layout has been built (`MixinRecipeLayoutBuilder`): for tag-recipe categories it takes the tag directly from the recipe (`ITagInfoRecipe#getTag`), otherwise it recovers it from the slot's member list via `IIngredientHelper#getTagKeyEquivalent`. The resulting slot → tag mapping is cached per `RecipeLayout` in a `WeakHashMap` (`TagSlotTracker`), so clicks, tooltips, bookmark narrowing, and transfer all use the **current layout's own data** and never go stale across pages or recipes.
 
-## Dependencies & Versions
-
-| Dependency | Version |
-| --- | --- |
-| Minecraft | 1.20.1 |
-| JEI | >= 15.21.0.148 |
-| Forge | 47.2.30 (FML version range `[47,)`) |
-| Fabric | Fabric API >= 0.92.11, Fabric Loader >= 0.16.10, Forge Config API Port >= 8.0.3 |
-
-## Building
-
-```bash
-./gradlew build
-```
-
-Artifacts are output to `fabric/build/libs` and `forge/build/libs` respectively. Run the client: `fabric:runClient` / `forge:runClient`.
-
 ## Installation
 
 Place the jar for the corresponding loader into the `mods` directory, and use it alongside JEI.
 
 ## Configuration
 
-Client config (Forge's `forge-client.toml`, Fabric via Forge Config API Port):
+Client config (Forge's `config/justenoughtaglib-client.toml`, Fabric via `Forge Config API Port`1`):
 
 - `hideJeiBlockTagRecipes` (default `true`): hides the block tag recipe category; set to `false` to restore it.
 
-## Usage & Bookmark Files
+## Usage
 
 - In-game, the tag category (`tag_recipes/item`) appears in JEI's left category bar.
 - Clicking a tag input slot that has no bookmarked preference in a normal recipe jumps to the corresponding tag recipe page.
 - To bookmark a single tag recipe, click its **output slot** to add it as a recipe bookmark, or use JEI's standard recipe-bookmark button.
 - Once a specific item is bookmarked for a tag, recipe input slots using that tag display the bookmarked item.
 - Clicking `U` / right-clicking a tag-recipe bookmark opens the item's usages; `R`/left-click opens the recipe preview; Shift-click transfers it directly.
-
-Recipe bookmark files are saved per-world at:
-
-```
-config/jei/world/local/<world name>/bookmarks.ini
-```
-
-(In multiplayer, this is `config/jei/world/server/<name>_<hash>/`; spaces in world names are replaced with underscores, e.g. `New World` → `New_World`.)
 
 ## License
 

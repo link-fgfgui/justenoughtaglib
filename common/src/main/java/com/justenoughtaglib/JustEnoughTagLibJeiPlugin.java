@@ -1,6 +1,7 @@
 package com.justenoughtaglib;
 
 import com.justenoughtaglib.config.JustEnoughTagLibClientConfig;
+import com.justenoughtaglib.tag.TagSlotTracker;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.resources.ResourceLocation;
@@ -18,10 +19,19 @@ public class JustEnoughTagLibJeiPlugin implements IModPlugin {
 
 	@Override
 	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+		TagSlotTracker.setRuntimeAvailable(true);
 		if (JustEnoughTagLibClientConfig.HIDE_JEI_BLOCK_TAG_RECIPES.get()) {
 			jeiRuntime.getRecipeManager()
 					.getRecipeType(BLOCK_TAG_RECIPE_TYPE_UID)
 					.ifPresent(jeiRuntime.getRecipeManager()::hideRecipeCategory);
 		}
+	}
+
+	@Override
+	public void onRuntimeUnavailable() {
+		// Recipe layouts can outlive a world screen by one client tick. Do not
+		// let their custom slot handlers consult the stopped JEI runtime.
+		TagSlotTracker.setRuntimeAvailable(false);
+		TagSlotTracker.clear();
 	}
 }

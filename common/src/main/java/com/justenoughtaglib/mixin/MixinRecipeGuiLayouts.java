@@ -42,6 +42,9 @@ public abstract class MixinRecipeGuiLayouts {
 		double mouseY,
 		CallbackInfoReturnable<Stream<IClickableIngredientInternal<?>>> cir
 	) {
+		if (!TagSlotTracker.isRuntimeAvailable()) {
+			return;
+		}
 		List<IClickableIngredientInternal<?>> customIngredients = recipeLayoutsWithButtons.stream()
 			.map(RecipeLayoutWithButtons::recipeLayout)
 			.flatMap(recipeLayout -> getCustomClickedIngredients(recipeLayout, mouseX, mouseY))
@@ -96,6 +99,7 @@ public abstract class MixinRecipeGuiLayouts {
 		} else if (role == RecipeIngredientRole.INPUT && !isTagRecipe(recipeLayout)) {
 			element = TagSlotTracker.findTagData(recipeLayout, slotUnderMouse.slot())
 				.filter(data -> !data.preferred())
+				.filter(data -> data.members().size() > 1)
 				.<IElement<?>>map(data -> new TagRecipeJumpElement<>(displayedIngredient, data.tag()));
 		} else {
 			element = Optional.empty();

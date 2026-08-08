@@ -21,10 +21,23 @@ import java.util.function.BiFunction;
 
 /** Resolves tag-equivalent JEI slots and applies bookmark-driven display overrides. */
 public final class TagSlotTracker {
+	private static volatile boolean runtimeAvailable;
 	private static final Map<RecipeLayout<?>, Map<IRecipeSlotView, TagSlotData>> LAYOUT_TAGS =
 		Collections.synchronizedMap(new WeakHashMap<>());
 
 	private TagSlotTracker() {
+	}
+
+	public static void setRuntimeAvailable(boolean available) {
+		runtimeAvailable = available;
+	}
+
+	public static boolean isRuntimeAvailable() {
+		return runtimeAvailable;
+	}
+
+	public static void clear() {
+		LAYOUT_TAGS.clear();
 	}
 
 	public record TagSlotData(TagKey<?> tag, List<ItemStack> members, boolean preferred) {

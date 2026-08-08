@@ -50,6 +50,9 @@ public final class TagRecipeJumpElement<T> implements IElement<T> {
 
 	@Override
 	public void show(IRecipesGui recipesGui, FocusUtil focusUtil, List<RecipeIngredientRole> roles) {
+		if (!TagSlotTracker.isRuntimeAvailable()) {
+			return;
+		}
 		Optional<RecipeType<ITagInfoRecipe>> recipeType = Internal.getJeiRuntime().getRecipeManager()
 			.getRecipeType(TAG_RECIPE_TYPE_UID, ITagInfoRecipe.class);
 		if (recipeType.isEmpty()) {

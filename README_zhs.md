@@ -17,48 +17,23 @@
 
 标签身份在 JEI 把 tag 原料展开为其成员物品列表时丢失。Mod 在布局构建完成后解析每个输入槽对应的 tag（`MixinRecipeLayoutBuilder`）：对 tag 配方分类直接从配方取得 tag（`ITagInfoRecipe#getTag`），对其它配方则用 `IIngredientHelper#getTagKeyEquivalent` 从槽位成员列表恢复 tag。得到的"槽 → tag"映射按 `RecipeLayout` 缓存于 `WeakHashMap`（`TagSlotTracker`），因此点击、tooltip、书签收窄与转移都基于**当前布局自己的数据**精确判定，不会跨页面、跨配方产生陈旧命中。
 
-## 依赖与版本
-
-| 依赖 | 版本 |
-| --- | --- |
-| Minecraft | 1.20.1 |
-| JEI | >= 15.21.0.148 |
-| Forge | 47.2.30（FML 版本范围 `[47,)`） |
-| Fabric | Fabric API >= 0.92.11，Fabric Loader >= 0.16.10，Forge Config API Port >= 8.0.3 |
-
-## 构建
-
-```bash
-./gradlew build
-```
-
-产物分别位于 `fabric/build/libs` 与 `forge/build/libs`。运行客户端：`fabric:runClient` / `forge:runClient`。
-
 ## 安装
 
 将对应加载器版本的 jar 放入 `mods` 目录，与 JEI 一同使用。
 
 ## 配置
 
-客户端配置（Forge 的 `forge-client.toml`，Fabric 经 Forge Config API Port 写入）：
+客户端配置（Forge 的 `config/justenoughtaglib-client.toml`，Fabric 经 Forge Config API Port 写入）：
 
 - `hideJeiBlockTagRecipes`（默认 `true`）：隐藏方块标签配方分类，设为 `false` 恢复。
 
-## 使用与书签文件
+## 使用
 
 - 进游戏后 JEI 左侧分类栏会出现 tag 分类（`tag_recipes/item`）。
 - 普通配方中点击未收藏的 tag 输入槽 → 跳转到对应标签配方页面。
 - 收藏单个标签配方：直接点击其**输出槽**加入为配方书签，或使用 JEI 标准的配方收藏按钮。
 - 为某个 tag 收藏了具体物品后，使用该 tag 的配方输入槽会显示书签选定的物品。
 - 对标签配方书签按 `U`/右键 → 打开该物品的用途；按 `R`/左键 → 打开配方预览；Shift+点击 → 直接转移。
-
-配方书签文件按世界保存于：
-
-```
-config/jei/world/local/<世界名>/bookmarks.ini
-```
-
-（多人模式为 `config/jei/world/server/<名>_<hash>/`；世界名中的空格会替换为下划线，例如 `New World` → `New_World`。）
 
 ## 许可证
 
