@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Optional;
 
 public final class TagRecipeJumpElement<T> implements IElement<T> {
-	private static final ResourceLocation TAG_RECIPE_TYPE_UID = new ResourceLocation("minecraft", "tag_recipes/item");
-
 	private final ITypedIngredient<T> ingredient;
 	private final TagKey<?> tag;
 
@@ -54,7 +52,7 @@ public final class TagRecipeJumpElement<T> implements IElement<T> {
 			return;
 		}
 		Optional<RecipeType<ITagInfoRecipe>> recipeType = Internal.getJeiRuntime().getRecipeManager()
-			.getRecipeType(TAG_RECIPE_TYPE_UID, ITagInfoRecipe.class);
+			.getRecipeType(createTagRecipeTypeUid(tag), ITagInfoRecipe.class);
 		if (recipeType.isEmpty()) {
 			showItemRecipes(recipesGui, focusUtil, roles);
 			return;
@@ -77,6 +75,12 @@ public final class TagRecipeJumpElement<T> implements IElement<T> {
 	private void showItemRecipes(IRecipesGui recipesGui, FocusUtil focusUtil, List<RecipeIngredientRole> roles) {
 		List<IFocus<?>> focuses = focusUtil.createFocuses(ingredient, roles);
 		recipesGui.show(focuses);
+	}
+
+	/** The JEI tag-recipe type for the tag's owning registry, e.g. {@code minecraft:tag_recipes/fluid}. */
+	private static ResourceLocation createTagRecipeTypeUid(TagKey<?> tag) {
+		ResourceLocation categoryLocation = tag.registry().location();
+		return new ResourceLocation(categoryLocation.getNamespace(), "tag_recipes/" + categoryLocation.getPath());
 	}
 
 	@Override

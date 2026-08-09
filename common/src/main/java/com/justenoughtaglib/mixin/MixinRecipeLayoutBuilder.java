@@ -1,7 +1,6 @@
 package com.justenoughtaglib.mixin;
 
 import com.justenoughtaglib.tag.TagSlotTracker;
-import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.library.gui.recipes.RecipeLayout;
 import mezz.jei.library.gui.recipes.layout.builder.RecipeLayoutBuilder;
@@ -24,9 +23,6 @@ public abstract class MixinRecipeLayoutBuilder<T> {
 
 	@Inject(method = "buildRecipeLayout", remap = false, at = @At("RETURN"))
 	private void justenoughtaglib$prepareTagSlots(CallbackInfoReturnable<RecipeLayout<T>> cir) {
-		TagSlotTracker.prepareLayout(
-			cir.getReturnValue(),
-			ingredientManager.getIngredientHelper(VanillaTypes.ITEM_STACK)
-		);
+		TagSlotTracker.prepareLayout(cir.getReturnValue(), ingredientManager);
 	}
 }

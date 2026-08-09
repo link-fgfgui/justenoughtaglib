@@ -97,9 +97,12 @@ public abstract class MixinRecipeGuiLayouts {
 		if (role == RecipeIngredientRole.OUTPUT && isTagRecipe(recipeLayout)) {
 			element = Optional.of(new RecipeContextElement<>(recipeLayout, displayedIngredient, role));
 		} else if (role == RecipeIngredientRole.INPUT && !isTagRecipe(recipeLayout)) {
-			element = TagSlotTracker.findTagData(recipeLayout, slotUnderMouse.slot())
-				.filter(data -> !data.preferred())
-				.filter(data -> data.members().size() > 1)
+			// Click decisions use the layout-build snapshot (TagSlotTracker.preferred()):
+			// a tag the player already bookmarks when the layout was built routes through
+			// normal item R/U; an unbound tag input with several members jumps to the tag
+			// listing. A bookmark change while this layout is open only affects the next
+			// layout (and the live display pin), not these clicks.
+			element = TagSlotTracker.findJumpSlotData(recipeLayout, slotUnderMouse.slot())
 				.<IElement<?>>map(data -> new TagRecipeJumpElement<>(displayedIngredient, data.tag()));
 		} else {
 			element = Optional.empty();

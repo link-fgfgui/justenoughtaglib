@@ -1,1 +1,2 @@
--[ ] 不清晰，本mod自己的slot不cycle用的DisplayOverride显示，但是判断是否能作为tag slot又是用的member>1,这里又不管override了
+[x] 不清晰，本mod自己的slot不cycle用的DisplayOverride显示，但是判断是否能作为tag slot又是用的member>1,这里又不管override了
+  已闭环：所有 tag slot 判定收敛到 TagSlotTracker.decideTagBehavior 单一入口。display pin 与 click/jump 共用该入口，ownedByCategory（DisplayOverride）在决策里被显式处理；member>1 只作为「unbound 时跳转到 tag listing 是否值得」的条件，不再单独散落各处。

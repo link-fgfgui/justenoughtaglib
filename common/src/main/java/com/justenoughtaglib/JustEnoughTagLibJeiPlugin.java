@@ -20,6 +20,7 @@ public class JustEnoughTagLibJeiPlugin implements IModPlugin {
 	@Override
 	public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
 		TagSlotTracker.setRuntimeAvailable(true);
+		TagSlotTracker.setIngredientManager(jeiRuntime.getIngredientManager());
 		if (JustEnoughTagLibClientConfig.HIDE_JEI_BLOCK_TAG_RECIPES.get()) {
 			jeiRuntime.getRecipeManager()
 					.getRecipeType(BLOCK_TAG_RECIPE_TYPE_UID)
@@ -32,6 +33,7 @@ public class JustEnoughTagLibJeiPlugin implements IModPlugin {
 		// Recipe layouts can outlive a world screen by one client tick. Do not
 		// let their custom slot handlers consult the stopped JEI runtime.
 		TagSlotTracker.setRuntimeAvailable(false);
+		TagSlotTracker.setIngredientManager(null);
 		TagSlotTracker.clear();
 	}
 }
