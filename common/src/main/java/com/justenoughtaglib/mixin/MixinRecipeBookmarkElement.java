@@ -1,5 +1,6 @@
 package com.justenoughtaglib.mixin;
 
+import com.justenoughtaglib.tag.TagSlotTracker;
 import com.justenoughtaglib.transfer.TransferLayoutPolicy;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
@@ -113,9 +114,13 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		index = 0
 	)
 	private FormattedText justenoughtaglib$replaceBookmarkTitle(FormattedText originalTitle) {
-		return justenoughtaglib$isTagRecipe()
-			? Component.literal(justenoughtaglib$getRecipeOutputDisplayName())
-			: originalTitle;
+		// getRecipeOutputDisplayName needs the JEI runtime. On the shutdown frame the
+		// bookmark overlay may still be rendering while the runtime is already stopped,
+		// so fall back to JEI's own title instead of touching Internal.getJeiRuntime().
+		if (!justenoughtaglib$isTagRecipe() || !TagSlotTracker.isRuntimeAvailable()) {
+			return originalTitle;
+		}
+		return Component.literal(justenoughtaglib$getRecipeOutputDisplayName());
 	}
 
 	@Redirect(
@@ -216,7 +221,10 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		AbstractContainerMenu container,
 		Player player
 	) {
-		if (!justenoughtaglib$isTagRecipe()) {
+		// createUnfocusedTagRecipeLayout needs the JEI runtime. handleClick can still
+		// reach here on the shutdown frame, so keep JEI's focused-layout behavior
+		// instead of touching Internal.getJeiRuntime() when the runtime is stopped.
+		if (!justenoughtaglib$isTagRecipe() || !TagSlotTracker.isRuntimeAvailable()) {
 			return focusedLayout;
 		}
 

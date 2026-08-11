@@ -23,8 +23,12 @@ final class TagIngredients {
 	/**
 	 * Whether two ingredients of {@code type} are the same entity. Reuses JEI's own
 	 * ingredient identity, {@code IIngredientHelper#getUniqueId(ingredient, UidContext.Ingredient)},
-	 * which is exactly the key JEI uses to compare bookmarked ingredients. Amount and
-	 * count are ignored; whether NBT matters is decided by JEI's subtype system.
+	 * which is the same context JEI uses to match an ingredient against another one
+	 * ({@code ElementSearch}, {@code IngredientBookmark}, {@code DisplayIngredientAcceptor}).
+	 * {@link UidContext#Recipe} is only for serializing an ingredient, never for in-memory
+	 * identity, so it is deliberately not used here — {@code MixinRecipeBookmark} follows
+	 * the same rule. Amount and count are ignored; whether NBT matters is decided by JEI's
+	 * subtype system.
 	 */
 	static boolean isSame(IIngredientManager ingredientManager, IIngredientType<?> type, Object a, Object b) {
 		IIngredientHelper<Object> helper = helper(ingredientManager, type);

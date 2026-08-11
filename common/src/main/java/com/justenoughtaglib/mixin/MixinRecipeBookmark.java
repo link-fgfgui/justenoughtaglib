@@ -94,7 +94,16 @@ public class MixinRecipeBookmark {
 
 	/**
 	 * Compares two typed ingredients of the same type, ignoring normalization
-	 * differences (JEI stores bookmark ids with {@link UidContext#Recipe}).
+	 * differences.
+	 *
+	 * <p>{@link UidContext#Ingredient} is JEI's identity context for comparing an
+	 * ingredient against another ingredient — the same context JEI uses in
+	 * {@code ElementSearch}, {@code IngredientBookmark} and
+	 * {@code DisplayIngredientAcceptor.getMatches}. The {@link UidContext#Recipe}
+	 * variant is only used when JEI <em>serializes</em> an ingredient
+	 * ({@code TypedIngredientSerializer}), not for in-memory identity, so it must not
+	 * be used here. NBT significance is decided by JEI's subtype system, exactly as in
+	 * {@code TagIngredients.isSame}.</p>
 	 */
 	@Unique
 	@SuppressWarnings("unchecked")
@@ -115,6 +124,6 @@ public class MixinRecipeBookmark {
 		if (!helper.isValidIngredient(aValue) || !helper.isValidIngredient(bValue)) {
 			return false;
 		}
-		return helper.getUniqueId(aValue, UidContext.Recipe).equals(helper.getUniqueId(bValue, UidContext.Recipe));
+		return helper.getUniqueId(aValue, UidContext.Ingredient).equals(helper.getUniqueId(bValue, UidContext.Ingredient));
 	}
 }
