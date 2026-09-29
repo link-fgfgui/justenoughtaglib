@@ -1,41 +1,59 @@
 # JustEnoughTagLib
 
-A **Minecraft 1.20.1 + JEI** client-side item tag recipe enhancement mod, supporting both **Forge** and **Fabric**.
+A **Minecraft 1.20.1 + JEI** client-side tag-recipe enhancement, for **Forge** and **Fabric**.
 
 [简体中文](./README_zhs.md)
 
+JEI only enables item/fluid tag recipe pages in a development environment. This mod keeps those pages available on a normal client, lets you bookmark one member of a tag, and pins ordinary recipe inputs that resolve to that tag to the bookmarked member.
+
+Requires [JEI](https://github.com/mezz/JustEnoughItems) **15.21.0.148 or newer**. Fabric also needs [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port). Client-side only.
+
 ## Features
 
-- **Force-enable tag recipe pages**: JEI's item tag recipe category (recipe type like `minecraft:tag_recipes/item`, e.g. viewing which items `#minecraft:planks` contains) is only enabled during development by default. This mod overrides `ClientConfig#isShowTagRecipesEnabled()` to keep it always enabled in production. (`MixinClientConfig`)
-- **Hide block tag recipes by default**: The less useful "block tag recipe" category (`minecraft:tag_recipes/block`) is hidden by default and can be restored by setting the client config `hideJeiBlockTagRecipes` to `false`. (`JustEnoughTagLibJeiPlugin`)
-- **Click un-bookmarked tag input to jump**: Clicking a tag-constructed input slot that has no bookmarked preference for that tag jumps directly to the corresponding tag recipe page; once a tag is bookmarked, its inputs fall back to JEI's normal item recipes/usages. (`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`)
-- **Bookmark tag-recipe output slots**: The output slot of a tag recipe can be bookmarked as a JEI **recipe bookmark** directly by clicking it, and it appears in the bookmark bar with JEI's native bookmark styling. (`RecipeContextElement` / `MixinBookmarkList`)
-- **Fix wrong item in recipe bookmarks**: Bookmarking a recipe entered from a specific output — a tag recipe's member slots, or any multi-output recipe — records that **focused item**, not the first output slot. (`MixinRecipeBookmark`)
-- **Narrow display after bookmark reload**: In recipes whose input slot resolves to a bookmarked tag, that slot displays the bookmarked item as a display-only override (the slot's underlying tag member list is untouched), and the override is re-applied whenever JEI cycles ingredients. (`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`)
-- **Full bookmark interaction**: Tag recipe bookmarks support normal recipe/usages queries (R/U and right-click), as well as JEI recipe transfer directly from the bookmark; when the focused member cannot be transferred it automatically falls back to the full tag recipe. (`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`)
-- **Clearer bookmark tooltips**: The tag-recipe bookmark tooltip shows the stored item's name and the recipe category line instead of a generic ingredient tooltip. (`MixinRecipeBookmarkElement`)
-
-## How It Works
-
-Tag identity is lost when JEI expands a tag ingredient into its member item list. The mod resolves the tag of each input slot after the layout has been built (`MixinRecipeLayoutBuilder`): for tag-recipe categories it takes the tag directly from the recipe (`ITagInfoRecipe#getTag`), otherwise it recovers it from the slot's member list via `IIngredientHelper#getTagKeyEquivalent`. The resulting slot → tag mapping is cached per `RecipeLayout` in a `WeakHashMap` (`TagSlotTracker`), so clicks, tooltips, bookmark narrowing, and transfer all use the **current layout's own data** and never go stale across pages or recipes.
-
-## Installation
-
-Place the jar for the corresponding loader into the `mods` directory, and use it alongside JEI.
-
-## Configuration
-
-Client config (Forge's `config/justenoughtaglib-client.toml`, Fabric via `Forge Config API Port`1`):
-
-- `hideJeiBlockTagRecipes` (default `true`): hides the block tag recipe category; set to `false` to restore it.
+- **Force-enable tag recipe pages**: JEI's tag recipe category (`minecraft:tag_recipes/item`, e.g. which items `#minecraft:planks` contains) stays enabled outside of development. (`MixinClientConfig`)
+- **Hide block tag recipes by default**: `minecraft:tag_recipes/block` is hidden; set `hideJeiBlockTagRecipes` to `false` to restore it. (`JustEnoughTagLibJeiPlugin`)
+- **Jump from unbound tag inputs**: In an ordinary recipe, clicking a tag-equivalent input that has no bookmark for that tag opens the matching tag page. After the tag is bookmarked, **newly built** layouts treat that slot as a normal item for R/U. (`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`)
+- **Bookmark a tag member from the tag page**: Click a tag recipe **output slot** (a member) to add a JEI **recipe bookmark**, shown with JEI's native recipe-bookmark styling. (`RecipeContextElement` / `MixinBookmarkList`)
+- **Bookmark the focused output**: Bookmarking a recipe opened from a specific output — a tag member, or any multi-output recipe — stores that **focused item**, not the first output slot. (`MixinRecipeBookmark`)
+- **Pin the bookmarked member in ordinary recipes**: When an ordinary recipe input is tag-equivalent to a bookmarked tag, the slot **displays** the bookmarked member as a display-only override (the underlying member list is untouched). The pin is re-applied every JEI ingredient cycle. (`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`)
+- **Tag-bookmark clicks from the bookmark bar**: `R` / left-click opens the tag recipe focused on the stored member; `U` / right-click opens that member's usages. (`MixinRecipeBookmarkElement`)
+- **Shorter tag-bookmark tooltips**: The tooltip shows the stored item name and the recipe category line, instead of the full ingredient tooltip. (`MixinRecipeBookmarkElement`)
 
 ## Usage
 
-- In-game, the tag category (`tag_recipes/item`) appears in JEI's left category bar.
-- Clicking a tag input slot that has no bookmarked preference in a normal recipe jumps to the corresponding tag recipe page.
-- To bookmark a single tag recipe, click its **output slot** to add it as a recipe bookmark, or use JEI's standard recipe-bookmark button.
-- Once a specific item is bookmarked for a tag, recipe input slots using that tag display the bookmarked item.
-- Clicking `U` / right-clicking a tag-recipe bookmark opens the item's usages; `R`/left-click opens the recipe preview; Shift-click transfers it directly.
+1. In-game, the item tag category (`tag_recipes/item`) appears in JEI's left category bar.
+2. In a normal recipe, click an unbound tag input → jump to that tag's page.
+3. On the tag page, click a **member output** (or JEI's recipe-bookmark button) to bookmark that member for the tag.
+4. Once a tag has a bookmarked member, ordinary recipe inputs for that tag show that member.
+5. From the **bookmark bar**: `R` / left-click → tag recipe preview; `U` / right-click → the stored item's usages.
+
+### Notes
+
+- JEI identifies recipe bookmarks by recipe id, and a tag recipe's id **is the tag**. There is **one recipe bookmark per tag**. Clicking another member of an already-bookmarked tag does not replace the bookmark; remove it first (bookmark bar, or the recipe-bookmark button on the tag page), then bookmark the member you want.
+- Display pinning follows the live bookmark list on the next ingredient cycle. Click handling is decided when the layout is **built**, so a recipe page that is already open keeps its old click behavior until JEI rebuilds it (change page, or close and reopen).
+- On the tag page itself, `U` / right-click on a **member output** stays on that tag recipe (focused on the member). Look up that item's usages from the bookmark bar or the ingredient list.
+- Shift-click transfer from a tag bookmark is attempted, and falls back from the focused-member layout to the unfocused tag layout when the focused one cannot transfer. Tag info recipes usually have no transfer handler, so this often does nothing.
+
+## Installation
+
+Place the jar for your loader in `mods`, next to JEI (and Forge Config API Port on Fabric).
+
+## Configuration
+
+Client config: Forge writes `config/justenoughtaglib-client.toml`; Fabric writes the same file through Forge Config API Port.
+
+- `hideJeiBlockTagRecipes` (default `true`): hide the block tag recipe category; set to `false` to restore it.
+
+## How It Works
+
+JEI expands a tag ingredient into its member list, so the tag identity is gone by the time a slot is clickable. After an **ordinary** recipe layout is built, this mod asks `IIngredientHelper#getTagKeyEquivalent` for each input slot and caches slot → tag on that `RecipeLayout` (`TagSlotTracker`). Tag-recipe pages (`ITagInfoRecipe`) are not tracked this way: their clicks go through the bookmark mixins, and their whole-tag input slot keeps JEI's native cycling.
+
+Two decisions are kept apart:
+
+- **Clicks** use a snapshot taken when the layout was built. Adding or removing a bookmark does not rewire clicks on an already-open page.
+- **Display** is re-pinned every JEI ingredient cycle from the live bookmark map, so a newly added bookmark appears on the next cycle without rebuilding the page.
+
+Both flows go through one decision point (`TagSlotTracker.decideTagBehavior`): pin the bookmarked member, jump to the tag listing, or leave the slot to JEI.
 
 ## License
 

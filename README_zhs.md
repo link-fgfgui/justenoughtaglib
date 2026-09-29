@@ -1,39 +1,59 @@
 # JustEnoughTagLib
 
-一个面向 **Minecraft 1.20.1 + JEI** 的客户端物品标签配方（Tag Recipe）增强 Mod，同时支持 **Forge** 和 **Fabric**。
+一个面向 **Minecraft 1.20.1 + JEI** 的客户端标签配方（Tag Recipe）增强 Mod，同时支持 **Forge** 和 **Fabric**。
+
+[English](./README.md)
+
+JEI 默认只在开发环境开放物品/流体标签配方页。本 Mod 在正式客户端里也保持这些页面可用，允许为某个 tag 收藏其中一个成员，并把普通配方里解析到该 tag 的输入槽钉在这个成员上。
+
+需要 [JEI](https://github.com/mezz/JustEnoughItems) **15.21.0.148 或更高**。Fabric 还需要 [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port)。仅客户端。
 
 ## 功能特性
 
-- **强制启用标签配方页面**：JEI 的物品标签配方分类（recipe type 形如 `minecraft:tag_recipes/item`，例如查看 `#minecraft:planks` 包含哪些物品）默认只在开发环境开放。本 Mod 通过改写 `ClientConfig#isShowTagRecipesEnabled()`，在生产环境下也始终启用。（`MixinClientConfig`）
-- **默认隐藏方块标签配方**：实用性较低的"方块标签配方"分类（`minecraft:tag_recipes/block`）默认隐藏，可通过客户端配置 `hideJeiBlockTagRecipes` 设为 `false` 恢复。（`JustEnoughTagLibJeiPlugin`）
-- **未收藏的标签输入槽点击跳转**：在普通配方中点击由 tag 构造、且该 tag 尚未被书签收藏的输入槽时，直接跳到对应的标签配方页面；一旦该 tag 已有书签，其输入槽则回退为 JEI 正常的物品配方/用途查询。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
-- **标签配方输出槽收藏为书签**：标签配方页面的**输出槽**可以直接点击收藏为 JEI **配方书签**，并以 JEI 原生书签样式显示在书签栏。（`RecipeContextElement` / `MixinBookmarkList`）
-- **修复书签记录物品错误**：从某个具体物品进入输出槽有多个的配方页面（tag 页面、多输出配方）后收藏，书签记录的是**该聚焦物品**，而不是第一个输出槽的物品。（`MixinRecipeBookmark`）
-- **书签重载后收窄展示**：在输入槽解析到已收藏 tag 的配方中，该输入槽以"仅显示覆盖"的方式显示书签选定的物品（不会改动槽位底层的 tag 成员列表），并在 JEI 循环展示物品时重新应用该覆盖。（`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`）
-- **配方书签完整交互**：标签配方书签支持常规的配方/用途查询（R/U 与右键），以及从书签直接执行 JEI 配方转移；当聚焦成员无法转移时会自动回退使用完整标签配方进行转移。（`MixinRecipeBookmarkElement` / `TransferLayoutPolicy`）
-- **更明确的提示**：标签配方书签的 tooltip 显示所存物品名称与配方分类行，而非通用的原料 tooltip。（`MixinRecipeBookmarkElement`）
-
-## 工作原理
-
-标签身份在 JEI 把 tag 原料展开为其成员物品列表时丢失。Mod 在布局构建完成后解析每个输入槽对应的 tag（`MixinRecipeLayoutBuilder`）：对 tag 配方分类直接从配方取得 tag（`ITagInfoRecipe#getTag`），对其它配方则用 `IIngredientHelper#getTagKeyEquivalent` 从槽位成员列表恢复 tag。得到的"槽 → tag"映射按 `RecipeLayout` 缓存于 `WeakHashMap`（`TagSlotTracker`），因此点击、tooltip、书签收窄与转移都基于**当前布局自己的数据**精确判定，不会跨页面、跨配方产生陈旧命中。
-
-## 安装
-
-将对应加载器版本的 jar 放入 `mods` 目录，与 JEI 一同使用。
-
-## 配置
-
-客户端配置（Forge 的 `config/justenoughtaglib-client.toml`，Fabric 经 Forge Config API Port 写入）：
-
-- `hideJeiBlockTagRecipes`（默认 `true`）：隐藏方块标签配方分类，设为 `false` 恢复。
+- **强制启用标签配方页面**：JEI 的标签配方分类（`minecraft:tag_recipes/item`，例如查看 `#minecraft:planks` 包含哪些物品）在生产环境也始终启用。（`MixinClientConfig`）
+- **默认隐藏方块标签配方**：`minecraft:tag_recipes/block` 默认隐藏，可通过客户端配置 `hideJeiBlockTagRecipes` 设为 `false` 恢复。（`JustEnoughTagLibJeiPlugin`）
+- **未收藏的标签输入槽点击跳转**：普通配方里，点击由 tag 构造、且该 tag 尚未被书签收藏的输入槽，直接跳到对应标签页。该 tag 已有书签后，**之后新建的布局**会把该槽当作普通物品做 R/U。（`TagRecipeJumpElement` / `MixinRecipeGuiLayouts`）
+- **标签配方输出槽收藏为书签**：标签页的**输出槽**（某个成员）可以直接点击，收藏为 JEI **配方书签**，并以 JEI 原生配方书签样式显示在书签栏。（`RecipeContextElement` / `MixinBookmarkList`）
+- **修复书签记录物品错误**：从某个具体输出进入配方页（tag 成员槽、或多输出配方）后再收藏，书签记录的是**该聚焦物品**，而不是第一个输出槽。（`MixinRecipeBookmark`）
+- **收藏后收窄展示**：普通配方的输入槽若解析到已收藏的 tag，该槽以「仅显示覆盖」的方式显示书签选定的成员（不改动底层成员列表），并在 JEI 每次循环展示时重新钉上。（`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`）
+- **书签栏上的标签书签交互**：`R` / 左键打开聚焦到所存成员的标签配方；`U` / 右键打开该成员的用途。（`MixinRecipeBookmarkElement`）
+- **更短的书签提示**：标签配方书签的 tooltip 显示所存物品名称与配方分类行，而不是完整的原料 tooltip。（`MixinRecipeBookmarkElement`）
 
 ## 使用
 
-- 进游戏后 JEI 左侧分类栏会出现 tag 分类（`tag_recipes/item`）。
-- 普通配方中点击未收藏的 tag 输入槽 → 跳转到对应标签配方页面。
-- 收藏单个标签配方：直接点击其**输出槽**加入为配方书签，或使用 JEI 标准的配方收藏按钮。
-- 为某个 tag 收藏了具体物品后，使用该 tag 的配方输入槽会显示书签选定的物品。
-- 对标签配方书签按 `U`/右键 → 打开该物品的用途；按 `R`/左键 → 打开配方预览；Shift+点击 → 直接转移。
+1. 进游戏后，JEI 左侧分类栏会出现物品 tag 分类（`tag_recipes/item`）。
+2. 普通配方中点击未收藏的 tag 输入槽 → 跳转到对应标签页。
+3. 在标签页点击某个**成员输出槽**（或 JEI 标准的配方收藏按钮），为该 tag 收藏这个成员。
+4. 某个 tag 有了收藏成员后，使用该 tag 的普通配方输入槽会显示这个成员。
+5. 在**书签栏**：`R` / 左键 → 标签配方预览；`U` / 右键 → 所存物品的用途。
+
+### 说明
+
+- JEI 用配方 id 区分配方书签，而标签配方的 id **就是这个 tag**。因此**每个 tag 只能有一条配方书签**。对已经收藏过的 tag 再点另一个成员不会替换书签；需要先在书签栏（或标签页的配方收藏按钮）删掉，再收藏想要的成员。
+- 显示钉跟随实时书签列表，下一拍物品循环就会更新。点击行为在布局**构建时**就定下来，所以已经打开的配方页会保持旧的点击逻辑，直到 JEI 重建布局（换页，或关掉再开）。
+- 在标签页上对**成员输出槽**按 `U` / 右键，会留在该标签配方（并聚焦到该成员），不会打开用途。查用途请走书签栏或 JEI 物品列表。
+- 从标签书签 Shift 点击转移会先试聚焦成员布局，失败再回退到未聚焦的完整标签布局。标签信息配方通常没有转移 handler，所以多数情况下不会发生转移。
+
+## 安装
+
+将对应加载器的 jar 放入 `mods`，与 JEI 一起使用（Fabric 还需 Forge Config API Port）。
+
+## 配置
+
+客户端配置：Forge 写入 `config/justenoughtaglib-client.toml`；Fabric 经 Forge Config API Port 写入同一文件。
+
+- `hideJeiBlockTagRecipes`（默认 `true`）：隐藏方块标签配方分类，设为 `false` 恢复。
+
+## 工作原理
+
+JEI 会把 tag 原料展开成成员列表，槽位可点击时标签身份已经丢失。对**普通配方**，本 Mod 在布局构建完成后对每个输入槽调用 `IIngredientHelper#getTagKeyEquivalent`，并把「槽 → tag」缓存在该 `RecipeLayout` 上（`TagSlotTracker`）。标签配方页（`ITagInfoRecipe`）不走这套跟踪：点击由书签 mixin 处理，整 tag 输入槽保持 JEI 原有循环。
+
+两件事刻意分开：
+
+- **点击**用的是布局构建时的快照。在已经打开的页面上增删书签，不会改写这一页的点击。
+- **显示**每个 JEI 物品循环都按实时书签表重新钉一次，所以新收藏会在下一拍循环出现，不必重建页面。
+
+两条路径都经过同一个决策点（`TagSlotTracker.decideTagBehavior`）：钉住所选成员、跳到标签列表，或交给 JEI。
 
 ## 许可证
 
