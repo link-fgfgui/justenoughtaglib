@@ -17,7 +17,7 @@ JEI 默认只在开发环境开放物品/流体标签配方页。本 Mod 在正�
 - **修复书签记录物品错误**：从某个具体输出进入配方页（tag 成员槽、或多输出配方）后再收藏，书签记录的是**该聚焦物品**，而不是第一个输出槽。（`MixinRecipeBookmark`）
 - **收藏后收窄展示**：普通配方的输入槽若解析到已收藏的 tag，该槽以「仅显示覆盖」的方式显示书签选定的成员（不改动底层成员列表），并在 JEI 每次循环展示时重新钉上。（`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`）
 - **书签栏上的标签书签交互**：`R` / 左键打开聚焦到所存成员的标签配方；`U` / 右键打开该成员的用途。（`MixinRecipeBookmarkElement`）
-- **更短的书签提示**：标签配方书签的 tooltip 显示所存物品名称与配方分类行，而不是完整的原料 tooltip。（`MixinRecipeBookmarkElement`）
+- **更短的书签提示**：配方书签的 tooltip 将第一行替换为所存物品名称，并在末尾显示配方分类行，而不是完整的长原料 tooltip。（`MixinRecipeBookmarkElement`）
 
 ## 使用
 

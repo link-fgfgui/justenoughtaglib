@@ -17,7 +17,7 @@ Requires [JEI](https://github.com/mezz/JustEnoughItems) **15.21.0.148 or newer**
 - **Bookmark the focused output**: Bookmarking a recipe opened from a specific output — a tag member, or any multi-output recipe — stores that **focused item**, not the first output slot. (`MixinRecipeBookmark`)
 - **Pin the bookmarked member in ordinary recipes**: When an ordinary recipe input is tag-equivalent to a bookmarked tag, the slot **displays** the bookmarked member as a display-only override (the underlying member list is untouched). The pin is re-applied every JEI ingredient cycle. (`TagBookmarkPreferences` / `TagSlotTracker` / `MixinRecipeLayoutBuilder` / `MixinRecipeLayout`)
 - **Tag-bookmark clicks from the bookmark bar**: `R` / left-click opens the tag recipe focused on the stored member; `U` / right-click opens that member's usages. (`MixinRecipeBookmarkElement`)
-- **Shorter tag-bookmark tooltips**: The tooltip shows the stored item name and the recipe category line, instead of the full ingredient tooltip. (`MixinRecipeBookmarkElement`)
+- **Shorter recipe-bookmark tooltips**: The tooltip shows the stored item name as the title and the recipe category line at the bottom, instead of the full ingredient tooltip. (`MixinRecipeBookmarkElement`)
 
 ## Usage
 

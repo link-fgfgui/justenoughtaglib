@@ -117,10 +117,11 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		// getRecipeOutputDisplayName needs the JEI runtime. On the shutdown frame the
 		// bookmark overlay may still be rendering while the runtime is already stopped,
 		// so fall back to JEI's own title instead of touching Internal.getJeiRuntime().
-		if (!justenoughtaglib$isTagRecipe() || !TagSlotTracker.isRuntimeAvailable()) {
+		String displayName = justenoughtaglib$getRecipeOutputDisplayName();
+		if (displayName == null || displayName.isEmpty()) {
 			return originalTitle;
 		}
-		return Component.literal(justenoughtaglib$getRecipeOutputDisplayName());
+		return Component.literal(displayName);
 	}
 
 	@Redirect(
@@ -138,7 +139,8 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 		IIngredientRenderer<T> ingredientRenderer,
 		ITypedIngredient<T> typedIngredient
 	) {
-		if (justenoughtaglib$isTagRecipe()) {
+		String displayName = justenoughtaglib$getRecipeOutputDisplayName();
+		if (displayName != null && !displayName.isEmpty()) {
 			tooltip.add(Component.translatable(
 				"jei.tooltip.bookmarks.recipe",
 				recipeBookmark.getRecipeCategory().getTitle()
@@ -150,7 +152,13 @@ public abstract class MixinRecipeBookmarkElement<R, I> {
 
 	@Unique
 	private String justenoughtaglib$getRecipeOutputDisplayName() {
+		if (!TagSlotTracker.isRuntimeAvailable()) {
+			return null;
+		}
 		ITypedIngredient<I> recipeOutput = recipeBookmark.getRecipeOutput();
+		if (recipeOutput == null) {
+			return null;
+		}
 		IIngredientManager ingredientManager = Internal.getJeiRuntime().getIngredientManager();
 		IIngredientHelper<I> ingredientHelper = ingredientManager.getIngredientHelper(recipeOutput.getType());
 		return ingredientHelper.getDisplayName(recipeOutput.getIngredient());
