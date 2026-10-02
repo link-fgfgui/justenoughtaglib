@@ -45,6 +45,12 @@ public abstract class MixinRecipeGuiLayouts {
 		if (!TagSlotTracker.isRuntimeAvailable()) {
 			return;
 		}
+		for (RecipeLayoutWithButtons<?> layoutWithButtons : recipeLayoutsWithButtons) {
+			if (layoutWithButtons.bookmarkButton().isMouseOver(mouseX, mouseY)) {
+				cir.setReturnValue(Stream.empty());
+				return;
+			}
+		}
 		List<IClickableIngredientInternal<?>> customIngredients = recipeLayoutsWithButtons.stream()
 			.map(RecipeLayoutWithButtons::recipeLayout)
 			.flatMap(recipeLayout -> getCustomClickedIngredients(recipeLayout, mouseX, mouseY))

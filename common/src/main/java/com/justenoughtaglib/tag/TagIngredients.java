@@ -3,6 +3,7 @@ package com.justenoughtaglib.tag;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
+import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.ingredients.subtypes.UidContext;
 import mezz.jei.api.runtime.IIngredientManager;
 import net.minecraft.tags.TagKey;
@@ -16,7 +17,7 @@ import java.util.Optional;
  * deliberately avoids per-type logic: every operation delegates to JEI, so item,
  * fluid and any other registered ingredient type behave alike.
  */
-final class TagIngredients {
+public final class TagIngredients {
 	private TagIngredients() {
 	}
 
@@ -30,9 +31,28 @@ final class TagIngredients {
 	 * the same rule. Amount and count are ignored; whether NBT matters is decided by JEI's
 	 * subtype system.
 	 */
-	static boolean isSame(IIngredientManager ingredientManager, IIngredientType<?> type, Object a, Object b) {
+	public static boolean isSame(IIngredientManager ingredientManager, IIngredientType<?> type, Object a, Object b) {
+		if (a == b) {
+			return true;
+		}
 		IIngredientHelper<Object> helper = helper(ingredientManager, type);
+		if (!helper.isValidIngredient(a) || !helper.isValidIngredient(b)) {
+			return false;
+		}
 		return helper.getUniqueId(a, UidContext.Ingredient).equals(helper.getUniqueId(b, UidContext.Ingredient));
+	}
+
+	public static boolean isSame(IIngredientManager ingredientManager, ITypedIngredient<?> a, ITypedIngredient<?> b) {
+		if (a == b) {
+			return true;
+		}
+		if (a == null || b == null) {
+			return false;
+		}
+		if (!a.getType().equals(b.getType())) {
+			return false;
+		}
+		return isSame(ingredientManager, a.getType(), a.getIngredient(), b.getIngredient());
 	}
 
 	/**

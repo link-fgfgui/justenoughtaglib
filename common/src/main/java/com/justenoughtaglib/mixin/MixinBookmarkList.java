@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -31,6 +32,8 @@ import java.util.List;
 public abstract class MixinBookmarkList {
 	@Shadow(remap = false)
 	public abstract boolean add(IBookmark value);
+	@Shadow(remap = false)
+	public abstract boolean remove(IBookmark ingredient);
 	@Shadow(remap = false)
 	@Final
 	private IIngredientManager ingredientManager;
@@ -65,11 +68,53 @@ public abstract class MixinBookmarkList {
 		if (recipeContextElement.getRole() != RecipeIngredientRole.OUTPUT) {
 			return;
 		}
-		// catch it, add a recipe bookmark. do not use jei internal api because i want to bookmark the item user focused
+		// catch it, add or toggle a recipe bookmark
 		RecipeBookmark<?, ?> recipeBookmark = createOutputRecipeBookmark(recipeContextElement, ingredientManager);
 		if (recipeBookmark != null) {
-			cir.setReturnValue(add(recipeBookmark));
+			RecipeBookmark<?, ?> existing = justenoughtaglib$findMatchingTagRecipeBookmark(recipeBookmark);
+			if (existing != null) {
+				if (justenoughtaglib$isSameOutput(existing, recipeBookmark)) {
+					cir.setReturnValue(remove(existing));
+				} else {
+					remove(existing);
+					cir.setReturnValue(add(recipeBookmark));
+				}
+			} else {
+				cir.setReturnValue(add(recipeBookmark));
+			}
 		}
+	}
+
+	@Redirect(
+		method = "onElementBookmarked",
+		at = @At(
+			value = "INVOKE",
+			target = "Lmezz/jei/gui/bookmarks/BookmarkList;add(Lmezz/jei/gui/bookmarks/IBookmark;)Z"
+		),
+		remap = false
+	)
+	private boolean justenoughtaglib$toggleItemBookmark(BookmarkList bookmarkList, IBookmark bookmark) {
+		if (bookmarkList.remove(bookmark)) {
+			return true;
+		}
+		return bookmarkList.add(bookmark);
+	}
+
+	private RecipeBookmark<?, ?> justenoughtaglib$findMatchingTagRecipeBookmark(RecipeBookmark<?, ?> recipeBookmark) {
+		ResourceLocation targetUid = recipeBookmark.getRecipeUid();
+		if (targetUid == null) {
+			return null;
+		}
+		for (IBookmark bookmark : bookmarksList) {
+			if (bookmark instanceof RecipeBookmark<?, ?> rb && targetUid.equals(rb.getRecipeUid())) {
+				return rb;
+			}
+		}
+		return null;
+	}
+
+	private boolean justenoughtaglib$isSameOutput(RecipeBookmark<?, ?> a, RecipeBookmark<?, ?> b) {
+		return com.justenoughtaglib.tag.TagIngredients.isSame(ingredientManager, a.getRecipeOutput(), b.getRecipeOutput());
 	}
 
 	@SuppressWarnings("unchecked")

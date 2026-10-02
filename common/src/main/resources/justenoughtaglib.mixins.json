@@ -11,6 +11,7 @@
         "MixinRecipeLayoutAccessor",
         "MixinRecipeSlotAccessor",
         "MixinRecipeBookmark",
+        "MixinRecipeBookmarkButton",
         "MixinRecipeGuiLayouts",
         "MixinBookmarkList",
         "MixinRecipeBookmarkElement",
